@@ -466,7 +466,7 @@ export default function Home() {
                                 className={[
                                   inputNum,
                                   "bg-[#e6fffb]",
-                                  notaAbaixoDaMediaLinha ? "text-red-600 font-bold" : "text-slate-900",
+                                  notaAbaixoDaMediaLinha ? "text-red-600" : "text-slate-900",
                                 ].join(" ")}
                                 value={
                                   buf.nota !== undefined
