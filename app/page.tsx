@@ -26,19 +26,24 @@ const ETAPA_TOTAL: Record<number, number> = {
 function round1(n: number) {
   return Math.round(n * 10) / 10;
 }
-
-function round2(n: number) {
-  return Math.round(n * 100) / 100;
-}
-
 function toNum(v: any): number {
   const n = Number(v);
   return Number.isFinite(n) ? n : 0;
 }
-
 function fmt1(n: number) {
   return round1(n).toFixed(1);
 }
+
+/** aceita "8,5" ou "8.5" ou "8" */
+function parsePtNumber(s: string): number | null {
+  const t = (s ?? "").trim();
+  if (t === "") return null;
+  const normalized = t.replace(/\./g, "").replace(",", "."); // (8.500 -> 8500) e (8,5 -> 8.5)
+  const n = Number(normalized);
+  return Number.isFinite(n) ? n : null;
+}
+
+type EditBuffer = Record<number, { valor_max?: string; nota?: string }>;
 
 export default function Home() {
   const [ano, setAno] = useState<number>(2025);
@@ -48,6 +53,9 @@ export default function Home() {
   const [rows, setRows] = useState<NotaRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<string>("");
+
+  // buffer de edição (pra permitir digitar vírgula/decimal sem “brigar” com formatação)
+  const [edit, setEdit] = useState<EditBuffer>({});
 
   const totalEtapa = ETAPA_TOTAL[etapa];
 
@@ -73,6 +81,7 @@ export default function Home() {
     }
 
     setRows((data as NotaRow[]) || []);
+    setEdit({}); // limpa buffers ao recarregar (evita inconsistências)
   }
 
   useEffect(() => {
@@ -82,7 +91,6 @@ export default function Home() {
 
   const porDisciplina = useMemo(() => {
     const map: Record<string, NotaRow[]> = {};
-
     for (const r of rows) {
       const key = (r.disciplina || "").trim() || "(Sem disciplina)";
       (map[key] ||= []).push(r);
@@ -128,7 +136,6 @@ export default function Home() {
     setMsg("");
     const { error } = await supabase.from("notas").update(patch).eq("id", id);
     if (error) return setMsg(error.message);
-
     setRows((prev) => prev.map((r) => (r.id === id ? ({ ...r, ...patch } as NotaRow) : r)));
   }
 
@@ -146,7 +153,7 @@ export default function Home() {
       .filter((r) => r.avaliacao?.toLowerCase() !== "ajuste")
       .reduce((acc, r) => acc + toNum(r.valor_max), 0);
 
-    const diff = round2(totalEtapa - somaSemAjuste);
+    const diff = totalEtapa - somaSemAjuste;
 
     if (diff < 0) {
       setMsg(`A disciplina "${disciplina}" passou do total (${somaSemAjuste} > ${totalEtapa}). Ajuste os valores.`);
@@ -173,12 +180,14 @@ export default function Home() {
   }
 
   function disciplinaResumo(list: NotaRow[]) {
-    const somaMax = round2(list.reduce((a, r) => a + toNum(r.valor_max), 0));
-    const somaNota = round2(list.reduce((a, r) => a + toNum(r.nota), 0));
-    const somaMedia60 = round2(list.reduce((a, r) => a + round2(toNum(r.valor_max) * 0.6), 0));
+    const somaMax = round1(list.reduce((a, r) => a + toNum(r.valor_max), 0));
+    const somaNota = round1(list.reduce((a, r) => a + toNum(r.nota), 0));
+    const somaMedia60 = round1(list.reduce((a, r) => a + round1(toNum(r.valor_max) * 0.6), 0));
     const ok = Math.abs(somaMax - totalEtapa) < 0.001;
     return { somaMax, somaNota, somaMedia60, ok };
   }
+
+  const inputNumBase = "w-20 rounded-lg border px-2 py-1 text-right"; // setinhas ficam (não escondi)
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
@@ -274,15 +283,15 @@ export default function Home() {
                       <span>
                         Soma Máx:{" "}
                         <b className={r.ok ? "text-emerald-700" : "text-amber-700"}>
-                          {r.somaMax}
+                          {fmt1(r.somaMax)}
                         </b>{" "}
                         / {totalEtapa}
                       </span>
                       <span>
-                        Nota: <b>{r.somaNota}</b>
+                        Nota: <b>{fmt1(r.somaNota)}</b>
                       </span>
                       <span>
-                        Média (60%): <b>{r.somaMedia60}</b>
+                        Média (60%): <b>{fmt1(r.somaMedia60)}</b>
                       </span>
                     </div>
                   </div>
@@ -321,26 +330,66 @@ export default function Home() {
 
                     <tbody>
                       {list.map((row, idx) => {
-                        const media60 = round1(toNum(row.valor_max) * 0.6);
                         const isAjuste = row.avaliacao?.toLowerCase() === "ajuste";
 
-                        // Acumulados: só contam avaliações com nota preenchida
+                        // valores efetivos (considera buffer enquanto digita)
+                        const buf = edit[row.id] || {};
+                        const valorMaxEff =
+                          buf.valor_max !== undefined ? parsePtNumber(buf.valor_max) ?? 0 : toNum(row.valor_max);
+
+                        const notaEff =
+                          buf.nota !== undefined
+                            ? parsePtNumber(buf.nota) // pode ser null enquanto digitando
+                            : row.nota === null || row.nota === undefined
+                              ? null
+                              : toNum(row.nota);
+
+                        const mediaLinha = round1(valorMaxEff * 0.6);
+
+                        // Acumulados: só contam avaliações com nota preenchida (!= null)
                         const subset = list.slice(0, idx + 1);
-                        const subsetLancado = subset.filter((r) => r.nota !== null && r.nota !== undefined);
+
+                        const subsetLancado = subset.filter((r) => {
+                          const b = edit[r.id] || {};
+                          const n =
+                            b.nota !== undefined
+                              ? parsePtNumber(b.nota)
+                              : r.nota === null || r.nota === undefined
+                                ? null
+                                : toNum(r.nota);
+                          return n !== null;
+                        });
 
                         const mediaAcumulada = round1(
-                          subsetLancado.reduce((acc, r) => acc + round1(toNum(r.valor_max) * 0.6), 0)
+                          subsetLancado.reduce((acc, r) => {
+                            const b = edit[r.id] || {};
+                            const v =
+                              b.valor_max !== undefined ? parsePtNumber(b.valor_max) ?? 0 : toNum(r.valor_max);
+                            return acc + round1(v * 0.6);
+                          }, 0)
                         );
 
-                        const notaAcumulada = round1(subsetLancado.reduce((acc, r) => acc + toNum(r.nota), 0));
+                        const notaAcumulada = round1(
+                          subsetLancado.reduce((acc, r) => {
+                            const b = edit[r.id] || {};
+                            const n =
+                              b.nota !== undefined
+                                ? parsePtNumber(b.nota)
+                                : r.nota === null || r.nota === undefined
+                                  ? null
+                                  : toNum(r.nota);
+                            return acc + (n ?? 0);
+                          }, 0)
+                        );
 
-                        const abaixoMediaAcum =
+                        // Regras de vermelho:
+                        // (3) Nota vermelha se abaixo da MÉDIA DA LINHA (e só quando nota existe)
+                        const notaAbaixoDaMediaDaLinha =
+                          notaEff !== null && notaEff + 1e-9 < mediaLinha;
+
+                        // (5) Nota Acum vermelha se abaixo da MÉDIA ACUMULADA (e só quando há algo lançado)
+                        const notaAcumAbaixoMediaAcum =
                           subsetLancado.length > 0 && notaAcumulada + 1e-9 < mediaAcumulada;
-
-                        const inputBase =
-                          "rounded-lg border px-2 py-1 [appearance:textfield] " +
-                          "[&::-webkit-outer-spin-button]:appearance-none " +
-                          "[&::-webkit-inner-spin-button]:appearance-none";
 
                         return (
                           <tr key={row.id} className="border-t">
@@ -355,24 +404,41 @@ export default function Home() {
                               />
                             </td>
 
-                            {/* Valor Máx (mais estreito, step 0.1, 1 casa) */}
+                            {/* Valor Máx: estreito, 1 casa, aceita vírgula */}
                             <td className="px-4 py-2">
                               <input
-                                type="number"
+                                type="text"
                                 inputMode="decimal"
-                                step="0.1"
                                 className={[
-                                  inputBase,
-                                  "w-20 text-right",
+                                  inputNumBase,
                                   isAjuste ? "bg-emerald-50" : "bg-white",
                                 ].join(" ")}
-                                value={fmt1(toNum(row.valor_max))}
+                                value={
+                                  buf.valor_max !== undefined ? buf.valor_max : fmt1(toNum(row.valor_max))
+                                }
                                 onChange={(e) => {
-                                  const raw = e.target.value;
-                                  if (raw === "" || raw === "-" || raw === "." || raw === "-.") {
-                                    return patchLinha(row.id, { valor_max: 0 });
+                                  const v = e.target.value;
+                                  setEdit((prev) => ({
+                                    ...prev,
+                                    [row.id]: { ...prev[row.id], valor_max: v },
+                                  }));
+                                }}
+                                onBlur={async () => {
+                                  const v = (edit[row.id]?.valor_max ?? "").trim();
+                                  if (v === "") {
+                                    // se apagar, zera
+                                    await patchLinha(row.id, { valor_max: 0 });
+                                  } else {
+                                    const parsed = parsePtNumber(v);
+                                    if (parsed !== null) {
+                                      await patchLinha(row.id, { valor_max: parsed });
+                                    }
                                   }
-                                  patchLinha(row.id, { valor_max: toNum(raw) });
+                                  setEdit((prev) => {
+                                    const next = { ...prev };
+                                    if (next[row.id]) delete next[row.id].valor_max;
+                                    return next;
+                                  });
                                 }}
                               />
                             </td>
@@ -380,27 +446,50 @@ export default function Home() {
                             {/* Média (60%) centralizada */}
                             <td className="px-4 py-2 text-center">
                               <span className="inline-flex rounded-lg bg-slate-100 px-2 py-1 text-xs">
-                                {fmt1(media60)}
+                                {fmt1(mediaLinha)}
                               </span>
                             </td>
 
-                            {/* Nota (mais estreito, step 0.1, 1 casa, vermelho se abaixo da média acumulada) */}
+                            {/* Nota: estreita, aceita vírgula, vermelha se abaixo da média da linha */}
                             <td className="px-4 py-2">
                               <input
-                                type="number"
+                                type="text"
                                 inputMode="decimal"
-                                step="0.1"
                                 className={[
-                                  inputBase,
-                                  "w-20 text-right bg-white",
-                                  abaixoMediaAcum ? "text-red-600 font-semibold" : "text-slate-900",
+                                  inputNumBase,
+                                  "bg-white",
+                                  notaAbaixoDaMediaDaLinha ? "text-red-600 font-semibold" : "text-slate-900",
                                 ].join(" ")}
-                                value={row.nota === null || row.nota === undefined ? "" : fmt1(toNum(row.nota))}
-                                onChange={(e) =>
-                                  patchLinha(row.id, {
-                                    nota: e.target.value === "" ? null : toNum(e.target.value),
-                                  })
+                                value={
+                                  buf.nota !== undefined
+                                    ? buf.nota
+                                    : row.nota === null || row.nota === undefined
+                                      ? ""
+                                      : fmt1(toNum(row.nota))
                                 }
+                                onChange={(e) => {
+                                  const v = e.target.value;
+                                  setEdit((prev) => ({
+                                    ...prev,
+                                    [row.id]: { ...prev[row.id], nota: v },
+                                  }));
+                                }}
+                                onBlur={async () => {
+                                  const v = (edit[row.id]?.nota ?? "").trim();
+                                  if (v === "") {
+                                    await patchLinha(row.id, { nota: null });
+                                  } else {
+                                    const parsed = parsePtNumber(v);
+                                    if (parsed !== null) {
+                                      await patchLinha(row.id, { nota: parsed });
+                                    }
+                                  }
+                                  setEdit((prev) => {
+                                    const next = { ...prev };
+                                    if (next[row.id]) delete next[row.id].nota;
+                                    return next;
+                                  });
+                                }}
                               />
                             </td>
 
@@ -416,7 +505,7 @@ export default function Home() {
                               <span
                                 className={[
                                   "inline-flex rounded-lg bg-slate-100 px-2 py-1 text-xs",
-                                  abaixoMediaAcum ? "text-red-600 font-semibold" : "text-slate-900",
+                                  notaAcumAbaixoMediaAcum ? "text-red-600 font-semibold" : "text-slate-900",
                                 ].join(" ")}
                               >
                                 {fmt1(notaAcumulada)}
