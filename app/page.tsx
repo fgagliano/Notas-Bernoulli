@@ -214,9 +214,7 @@ export default function Home() {
               <h1 className={`text-2xl font-extrabold tracking-tight ${bernNavy}`}>Notas</h1>
               <span className={`text-sm font-semibold ${bernTeal}`}>Bernoulli</span>
             </div>
-            <p className="mt-1 text-sm text-slate-700">
-              Etapas: <b>30</b>, <b>30</b>, <b>40</b>. Cada disciplina deve fechar o total da etapa.
-            </p>
+
           </div>
 
           <div className="flex flex-wrap gap-2">
