@@ -1,3 +1,6 @@
+import "./globals.css";
+
+
 export const metadata = {
   title: "Notas Bernoulli",
   description: "Controle de notas escolares"
