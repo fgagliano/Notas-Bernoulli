@@ -78,9 +78,10 @@ export default function AlunosPage() {
 
       <ul style={{ paddingLeft: 18 }}>
         {alunos.map((a) => (
-          <li key={a.id} style={{ marginBottom: 8 }}>
-            {a.nome} — {a.serie}
-          </li>
+         <li key={a.id} style={{ marginBottom: 8 }}>
+  <a href={`/alunos/${a.id}`}>{a.nome}</a> — {a.serie}
+</li>
+
         ))}
         {alunos.length === 0 && !erro && <li style={{ color: "#666" }}>Nenhum aluno cadastrado ainda.</li>}
       </ul>
