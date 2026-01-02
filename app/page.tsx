@@ -1,275 +1,368 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { supabase } from "../lib/supabaseClient";
 
-type AlunoRow = { id: number; nome: string; serie: string; ativo: boolean };
-
-type Lancamento = {
+type NotaRow = {
   id: number;
-  criado_em: string;
   aluno: string;
-  serie: string;
   etapa: number;
   disciplina: string;
   avaliacao: string;
   valor_max: number;
-  valor_media: number;
   nota: number | null;
+  created_at?: string;
 };
 
-function toNumber(v: string) {
-  const x = Number(String(v).replace(",", "."));
-  return Number.isFinite(x) ? x : NaN;
+const ALUNOS = ["Sofia", "Miguel"] as const;
+
+const ETAPA_TOTAL: Record<number, number> = {
+  1: 30,
+  2: 30,
+  3: 40,
+};
+
+function round2(n: number) {
+  return Math.round(n * 100) / 100;
 }
 
-const LS_KEY_ALUNO = "notas_ultimo_aluno";
-
-export default function Page() {
-  // ✅ lista de alunos (para a combobox)
-  const [alunos, setAlunos] = useState<AlunoRow[]>([]);
-
-  // ✅ aluno selecionado (persistente)
-  const [aluno, setAluno] = useState("");
-  const [serie, setSerie] = useState("");
+export default function Home() {
+  const [aluno, setAluno] = useState<(typeof ALUNOS)[number]>("Sofia");
   const [etapa, setEtapa] = useState<1 | 2 | 3>(1);
-  const [disciplina, setDisciplina] = useState("");
-  const [avaliacao, setAvaliacao] = useState("");
-
-  const [valorMaxStr, setValorMaxStr] = useState("");
-  const [valorMediaStr, setValorMediaStr] = useState("");
-  const [notaStr, setNotaStr] = useState("");
-
+  const [rows, setRows] = useState<NotaRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<string>("");
-  const [erro, setErro] = useState<string>("");
 
-  const [ultimos, setUltimos] = useState<Lancamento[]>([]);
+  const totalEtapa = ETAPA_TOTAL[etapa];
 
-  const valorMax = useMemo(() => toNumber(valorMaxStr), [valorMaxStr]);
-  const valorMedia = useMemo(() => toNumber(valorMediaStr), [valorMediaStr]);
-  const nota = useMemo(() => (notaStr.trim() === "" ? null : toNumber(notaStr)), [notaStr]);
+  async function carregar() {
+    setLoading(true);
+    setMsg("");
 
-  // ✅ ao carregar a página: restaura aluno salvo e busca a lista de alunos
-  useEffect(() => {
-    const saved = localStorage.getItem(LS_KEY_ALUNO);
-    if (saved) setAluno(saved);
+    const { data, error } = await supabase
+      .from("notas")
+      .select("*")
+      .eq("aluno", aluno)
+      .eq("etapa", etapa)
+      .order("disciplina", { ascending: true })
+      .order("created_at", { ascending: true });
 
-    (async () => {
-      const r = await fetch("/api/alunos", { cache: "no-store" });
-      const j = await r.json().catch(() => ({}));
-      if (r.ok) setAlunos(j.data || []);
-    })();
-  }, []);
+    setLoading(false);
 
-  // ✅ sempre que mudar o aluno, salva no localStorage
-  useEffect(() => {
-    localStorage.setItem(LS_KEY_ALUNO, aluno);
-  }, [aluno]);
+    if (error) {
+      setMsg(error.message);
+      setRows([]);
+      return;
+    }
 
-  // ✅ (opcional, mas útil): quando escolher um aluno existente, preenche a Série automaticamente
-  useEffect(() => {
-    const found = alunos.find((a) => a.nome.toLowerCase() === aluno.trim().toLowerCase());
-    if (found) setSerie(found.serie);
-  }, [aluno, alunos]);
-
-  // Auto-preenche Valor Média = 60% do Valor Máx (editável)
-  useEffect(() => {
-    if (valorMaxStr.trim() === "") return;
-    const vm = toNumber(valorMaxStr);
-    if (!Number.isFinite(vm)) return;
-    setValorMediaStr((prev) => {
-      if (prev.trim() === "") return String((vm * 0.6).toFixed(2)).replace(".", ",");
-      return prev;
-    });
-  }, [valorMaxStr]);
-
-  async function carregarUltimos() {
-    const r = await fetch("/api/notas-lancamentos?limit=20", { cache: "no-store" });
-    const j = await r.json().catch(() => ({}));
-    if (!r.ok) return;
-    setUltimos(j.data || []);
+    setRows((data as NotaRow[]) || []);
   }
 
   useEffect(() => {
-    carregarUltimos();
-  }, []);
+    carregar();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [aluno, etapa]);
 
-  async function salvar(e: React.FormEvent) {
-    e.preventDefault();
-    setMsg("");
-    setErro("");
-
-    const payload = {
-      aluno: aluno.trim(),
-      serie: serie.trim(),
-      etapa,
-      disciplina: disciplina.trim(),
-      avaliacao: avaliacao.trim(),
-      valor_max: valorMax,
-      valor_media: valorMedia,
-      nota: nota
-    };
-
-    if (!payload.aluno || !payload.serie || !payload.disciplina || !payload.avaliacao) {
-      setErro("Preencha Aluno, Série, Disciplina e Avaliação.");
-      return;
-    }
-    if (!Number.isFinite(payload.valor_max) || payload.valor_max <= 0) {
-      setErro("Valor Máx inválido.");
-      return;
-    }
-    if (!Number.isFinite(payload.valor_media) || payload.valor_media < 0) {
-      setErro("Valor Média inválido.");
-      return;
-    }
-    if (payload.nota !== null) {
-      if (!Number.isFinite(payload.nota)) {
-        setErro("Nota inválida.");
-        return;
-      }
-      if (payload.nota < 0 || payload.nota > payload.valor_max) {
-        setErro("Nota precisa estar entre 0 e o Valor Máx.");
-        return;
-      }
+  const porDisciplina = useMemo(() => {
+    const map = new Map<string, NotaRow[]>();
+    for (const r of rows) {
+      const key = (r.disciplina || "").trim() || "(Sem disciplina)";
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(r);
     }
 
-    try {
-      setLoading(true);
-      const r = await fetch("/api/notas-lancamentos", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
+    // "Ajuste" por último
+    for (const [k, list] of map.entries()) {
+      list.sort((a, b) => {
+        const aa = a.avaliacao?.toLowerCase() === "ajuste" ? 1 : 0;
+        const bb = b.avaliacao?.toLowerCase() === "ajuste" ? 1 : 0;
+        if (aa !== bb) return aa - bb;
+        return (a.created_at || "").localeCompare(b.created_at || "");
       });
-      const j = await r.json().catch(() => ({}));
-      if (!r.ok) {
-        setErro(j.error || "Erro ao salvar.");
-        return;
-      }
-
-      setMsg("Salvo ✅");
-      setAvaliacao("");
-      setValorMaxStr("");
-      setValorMediaStr("");
-      setNotaStr("");
-      await carregarUltimos();
-    } catch (err: any) {
-      setErro(err?.message || "Falha de rede.");
-    } finally {
-      setLoading(false);
+      map.set(k, list);
     }
+
+    return Array.from(map.entries());
+  }, [rows]);
+
+  async function addLinha(disciplina: string) {
+    setMsg("");
+    const { error } = await supabase.from("notas").insert({
+      aluno,
+      etapa,
+      disciplina,
+      avaliacao: "Nova avaliação",
+      valor_max: 0,
+      nota: null,
+    });
+
+    if (error) return setMsg(error.message);
+    await carregar();
+  }
+
+  async function delLinha(id: number) {
+    setMsg("");
+    const { error } = await supabase.from("notas").delete().eq("id", id);
+    if (error) return setMsg(error.message);
+    await carregar();
+  }
+
+  async function patchLinha(id: number, patch: Partial<NotaRow>) {
+    setMsg("");
+    const { error } = await supabase.from("notas").update(patch).eq("id", id);
+    if (error) return setMsg(error.message);
+
+    setRows((prev) => prev.map((r) => (r.id === id ? ({ ...r, ...patch } as NotaRow) : r)));
+  }
+
+  async function criarDisciplina() {
+    const nome = prompt("Nome da disciplina:");
+    if (!nome) return;
+    await addLinha(nome.trim());
+  }
+
+  async function fecharTotal(disciplina: string, list: NotaRow[]) {
+    setMsg("");
+
+    const ajuste = list.find((r) => r.avaliacao?.toLowerCase() === "ajuste");
+    const somaSemAjuste = list
+      .filter((r) => r.avaliacao?.toLowerCase() !== "ajuste")
+      .reduce((acc, r) => acc + (Number(r.valor_max) || 0), 0);
+
+    const diff = round2(totalEtapa - somaSemAjuste);
+
+    if (diff < 0) {
+      setMsg(`A disciplina "${disciplina}" passou do total (${somaSemAjuste} > ${totalEtapa}). Ajuste os valores.`);
+      return;
+    }
+
+    if (ajuste) {
+      const { error } = await supabase.from("notas").update({ valor_max: diff }).eq("id", ajuste.id);
+      if (error) return setMsg(error.message);
+    } else {
+      const { error } = await supabase.from("notas").insert({
+        aluno,
+        etapa,
+        disciplina,
+        avaliacao: "Ajuste",
+        valor_max: diff,
+        nota: null,
+      });
+      if (error) return setMsg(error.message);
+    }
+
+    await carregar();
+  }
+
+  function disciplinaResumo(list: NotaRow[]) {
+    const somaMax = round2(list.reduce((a, r) => a + (Number(r.valor_max) || 0), 0));
+    const somaNota = round2(list.reduce((a, r) => a + (Number(r.nota) || 0), 0));
+    const somaMedia60 = round2(list.reduce((a, r) => a + round2((Number(r.valor_max) || 0) * 0.6), 0));
+    const ok = Math.abs(somaMax - totalEtapa) < 0.001;
+    return { somaMax, somaNota, somaMedia60, ok };
   }
 
   return (
-    <main style={{ maxWidth: 980, margin: "24px auto", padding: 16 }}>
-      <h1>Lançamento de Notas</h1>
+    <div className="min-h-screen bg-slate-50 text-slate-900">
+      <div className="mx-auto max-w-6xl p-4 sm:p-6">
+        <header className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Notas</h1>
+            <p className="text-sm text-slate-600">
+              Etapas: <b>30</b>, <b>30</b>, <b>40</b>. Cada disciplina deve fechar o total da etapa.
+            </p>
+          </div>
 
-      <form onSubmit={salvar} style={{ border: "1px solid #ddd", borderRadius: 10, padding: 14, marginTop: 12 }}>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-          {/* ✅ Aluno = combobox com datalist + persistência */}
-          <label style={{ display: "grid", gap: 6 }}>
-            <span>Aluno</span>
-            <input
-              list="alunos-list"
-              value={aluno}
-              onChange={(e) => setAluno(e.target.value)}
-              placeholder="Digite ou selecione"
-            />
-            <datalist id="alunos-list">
-              {alunos.map((a) => (
-                <option key={a.id} value={a.nome} />
-              ))}
-            </datalist>
-          </label>
+          <div className="flex flex-wrap gap-2">
+            <div className="rounded-xl border bg-white p-2 shadow-sm">
+              <div className="text-xs text-slate-500">Aluno</div>
+              <select
+                className="mt-1 w-40 rounded-lg border px-2 py-1 text-sm"
+                value={aluno}
+                onChange={(e) => setAluno(e.target.value as any)}
+              >
+                {ALUNOS.map((a) => (
+                  <option key={a} value={a}>
+                    {a}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-          <label style={{ display: "grid", gap: 6 }}>
-            <span>Série</span>
-            <input value={serie} onChange={(e) => setSerie(e.target.value)} placeholder="ex: 8º ano" />
-          </label>
+            <div className="rounded-xl border bg-white p-2 shadow-sm">
+              <div className="text-xs text-slate-500">Etapa</div>
+              <div className="mt-1 flex gap-1">
+                {[1, 2, 3].map((n) => (
+                  <button
+                    key={n}
+                    className={[
+                      "rounded-lg px-3 py-1 text-sm font-medium",
+                      etapa === n ? "bg-slate-900 text-white" : "bg-slate-100 hover:bg-slate-200",
+                    ].join(" ")}
+                    onClick={() => setEtapa(n as any)}
+                  >
+                    {n}ª
+                  </button>
+                ))}
+              </div>
+              <div className="mt-1 text-xs text-slate-500">Total: {totalEtapa}</div>
+            </div>
 
-          <label style={{ display: "grid", gap: 6 }}>
-            <span>Etapa</span>
-            <select value={etapa} onChange={(e) => setEtapa(Number(e.target.value) as 1 | 2 | 3)}>
-              <option value={1}>1ª (30 pts)</option>
-              <option value={2}>2ª (30 pts)</option>
-              <option value={3}>3ª (40 pts)</option>
-            </select>
-          </label>
+            <button
+              className="rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-slate-800"
+              onClick={criarDisciplina}
+            >
+              + Disciplina
+            </button>
+          </div>
+        </header>
 
-          <label style={{ display: "grid", gap: 6 }}>
-            <span>Disciplina</span>
-            <input value={disciplina} onChange={(e) => setDisciplina(e.target.value)} placeholder="ex: Ciências" />
-          </label>
+        {msg && (
+          <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{msg}</div>
+        )}
 
-          <label style={{ display: "grid", gap: 6, gridColumn: "1 / -1" }}>
-            <span>Avaliação</span>
-            <input value={avaliacao} onChange={(e) => setAvaliacao(e.target.value)} placeholder="ex: Prova A1" />
-          </label>
+        <div className="space-y-4">
+          {loading && (
+            <div className="rounded-xl border bg-white p-4 text-sm text-slate-600 shadow-sm">Carregando…</div>
+          )}
 
-          <label style={{ display: "grid", gap: 6 }}>
-            <span>Valor Máx</span>
-            <input inputMode="decimal" value={valorMaxStr} onChange={(e) => setValorMaxStr(e.target.value)} placeholder="ex: 8" />
-          </label>
+          {!loading && porDisciplina.length === 0 && (
+            <div className="rounded-xl border bg-white p-6 text-sm text-slate-600 shadow-sm">
+              Nenhuma linha ainda. Clique em <b>+ Disciplina</b> para começar.
+            </div>
+          )}
 
-          <label style={{ display: "grid", gap: 6 }}>
-            <span>Valor Média (60%)</span>
-            <input inputMode="decimal" value={valorMediaStr} onChange={(e) => setValorMediaStr(e.target.value)} placeholder="ex: 4,8" />
-          </label>
+          {porDisciplina.map(([disciplina, list]) => {
+            const r = disciplinaResumo(list);
 
-          <label style={{ display: "grid", gap: 6 }}>
-            <span>Nota</span>
-            <input inputMode="decimal" value={notaStr} onChange={(e) => setNotaStr(e.target.value)} placeholder="vazio = ainda não lançou" />
-          </label>
+            return (
+              <div key={disciplina} className="rounded-2xl border bg-white shadow-sm">
+                <div className="flex flex-col gap-2 border-b p-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <h2 className="text-lg font-semibold">{disciplina}</h2>
+                    <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600">
+                      <span>
+                        Soma Máx:{" "}
+                        <b className={r.ok ? "text-emerald-700" : "text-amber-700"}>
+                          {r.somaMax}
+                        </b>{" "}
+                        / {totalEtapa}
+                      </span>
+                      <span>
+                        Nota: <b>{r.somaNota}</b>
+                      </span>
+                      <span>
+                        Média (60%): <b>{r.somaMedia60}</b>
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      className="rounded-xl bg-slate-100 px-3 py-2 text-sm hover:bg-slate-200"
+                      onClick={() => addLinha(disciplina)}
+                    >
+                      + Avaliação
+                    </button>
+
+                    <button
+                      className="rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-800 hover:bg-emerald-100"
+                      onClick={() => fecharTotal(disciplina, list)}
+                      title="Cria/atualiza uma linha 'Ajuste' para fechar o total"
+                    >
+                      Fechar total
+                    </button>
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-slate-50 text-left text-xs text-slate-600">
+                      <tr>
+                        <th className="px-4 py-3">Avaliação</th>
+                        <th className="px-4 py-3">Valor Máx</th>
+                        <th className="px-4 py-3">Média (60%)</th>
+                        <th className="px-4 py-3">Nota</th>
+                        <th className="px-4 py-3 text-right">Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {list.map((row) => {
+                        const media60 = round2((Number(row.valor_max) || 0) * 0.6);
+                        const isAjuste = row.avaliacao?.toLowerCase() === "ajuste";
+
+                        return (
+                          <tr key={row.id} className="border-t">
+                            <td className="px-4 py-2">
+                              <input
+                                className={[
+                                  "w-full rounded-lg border px-2 py-1",
+                                  isAjuste ? "bg-emerald-50" : "bg-white",
+                                ].join(" ")}
+                                value={row.avaliacao || ""}
+                                onChange={(e) => patchLinha(row.id, { avaliacao: e.target.value })}
+                              />
+                            </td>
+
+                            <td className="px-4 py-2">
+                              <input
+                                type="number"
+                                step="0.01"
+                                className={[
+                                  "w-28 rounded-lg border px-2 py-1",
+                                  isAjuste ? "bg-emerald-50" : "bg-white",
+                                ].join(" ")}
+                                value={row.valor_max ?? 0}
+                                onChange={(e) => patchLinha(row.id, { valor_max: Number(e.target.value) })}
+                              />
+                            </td>
+
+                            <td className="px-4 py-2">
+                              <span className="inline-flex rounded-lg bg-slate-100 px-2 py-1 text-xs">{media60}</span>
+                            </td>
+
+                            <td className="px-4 py-2">
+                              <input
+                                type="number"
+                                step="0.01"
+                                className="w-28 rounded-lg border bg-white px-2 py-1"
+                                value={row.nota ?? ""}
+                                onChange={(e) =>
+                                  patchLinha(row.id, { nota: e.target.value === "" ? null : Number(e.target.value) })
+                                }
+                              />
+                            </td>
+
+                            <td className="px-4 py-2 text-right">
+                              <button
+                                className="rounded-lg px-2 py-1 text-xs text-red-700 hover:bg-red-50"
+                                onClick={() => delLinha(row.id)}
+                              >
+                                Excluir
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                {!r.ok && (
+                  <div className="border-t bg-amber-50 p-3 text-xs text-amber-800">
+                    Esta disciplina não fecha o total da etapa. Clique em <b>Fechar total</b> para criar/ajustar a linha
+                    “Ajuste”.
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
 
-        <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 12 }}>
-          <button type="submit" disabled={loading}>
-            {loading ? "Salvando..." : "Salvar"}
-          </button>
-          {msg && <span style={{ color: "green" }}>{msg}</span>}
-          {erro && <span style={{ color: "crimson" }}>{erro}</span>}
-        </div>
-      </form>
-
-      <h2 style={{ marginTop: 22 }}>Últimos lançamentos</h2>
-
-      <div style={{ overflowX: "auto", border: "1px solid #eee", borderRadius: 10 }}>
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
-          <thead>
-            <tr style={{ textAlign: "left" }}>
-              <th style={{ padding: 10, borderBottom: "1px solid #eee" }}>Aluno</th>
-              <th style={{ padding: 10, borderBottom: "1px solid #eee" }}>Série</th>
-              <th style={{ padding: 10, borderBottom: "1px solid #eee" }}>Etapa</th>
-              <th style={{ padding: 10, borderBottom: "1px solid #eee" }}>Disciplina</th>
-              <th style={{ padding: 10, borderBottom: "1px solid #eee" }}>Avaliação</th>
-              <th style={{ padding: 10, borderBottom: "1px solid #eee" }}>Máx</th>
-              <th style={{ padding: 10, borderBottom: "1px solid #eee" }}>Média</th>
-              <th style={{ padding: 10, borderBottom: "1px solid #eee" }}>Nota</th>
-            </tr>
-          </thead>
-          <tbody>
-            {ultimos.map((x) => (
-              <tr key={x.id}>
-                <td style={{ padding: 10, borderBottom: "1px solid #f2f2f2" }}>{x.aluno}</td>
-                <td style={{ padding: 10, borderBottom: "1px solid #f2f2f2" }}>{x.serie}</td>
-                <td style={{ padding: 10, borderBottom: "1px solid #f2f2f2" }}>{x.etapa}ª</td>
-                <td style={{ padding: 10, borderBottom: "1px solid #f2f2f2" }}>{x.disciplina}</td>
-                <td style={{ padding: 10, borderBottom: "1px solid #f2f2f2" }}>{x.avaliacao}</td>
-                <td style={{ padding: 10, borderBottom: "1px solid #f2f2f2" }}>{x.valor_max}</td>
-                <td style={{ padding: 10, borderBottom: "1px solid #f2f2f2" }}>{x.valor_media}</td>
-                <td style={{ padding: 10, borderBottom: "1px solid #f2f2f2" }}>{x.nota ?? "—"}</td>
-              </tr>
-            ))}
-            {ultimos.length === 0 && (
-              <tr>
-                <td colSpan={8} style={{ padding: 12, color: "#666" }}>
-                  Ainda sem lançamentos.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+        <footer className="mt-10 text-xs text-slate-500">
+          Dica: use “Fechar total” após alterar valores para garantir 30/30/40 por disciplina.
+        </footer>
       </div>
-    </main>
+    </div>
   );
 }
-
