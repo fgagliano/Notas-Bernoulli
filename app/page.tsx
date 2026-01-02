@@ -305,18 +305,47 @@ export default function Home() {
                   <div>
                     <h2 className={`text-lg font-extrabold ${bernNavy}`}>{disciplina}</h2>
                     <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-700">
-                      <span>
-                        Soma Máx:{" "}
-                        <b className={r.ok ? "text-emerald-700" : "text-amber-700"}>{fmt1(r.somaMax)}</b> /{" "}
-                        {totalEtapa}
-                      </span>
-                      <span>
-                        Nota: <b>{fmt1(r.somaNota)}</b>
-                      </span>
-                      <span>
-                        Média (60%): <b>{fmt1(r.somaMedia60)}</b>
-                      </span>
-                    </div>
+  {/* 1) Aviso de "Soma Máx" só enquanto NÃO fechou o total */}
+  {!r.ok && (
+    <span>
+      Soma Máx:{" "}
+      <b className="text-amber-700">{fmt1(r.somaMax)}</b> / {totalEtapa}{" "}
+      <span className="text-slate-500">(complete os valores)</span>
+    </span>
+  )}
+
+  {/* 2) Progresso em relação à média da etapa (só se houver nota lançada) */}
+  {(() => {
+    // nota acumulada "real": soma das notas lançadas (ignora null)
+    const notaLancada = list.reduce((acc, rr) => acc + (rr.nota ?? 0), 0);
+    const temAlgumaNota = list.some((rr) => rr.nota !== null && rr.nota !== undefined);
+
+    const mediaEtapa = totalEtapa * 0.6;
+
+    // quanto falta para atingir a média
+    const faltam = Math.max(0, mediaEtapa - notaLancada);
+
+    // ainda há pontos "em disputa": total - nota já obtida
+    const emDisputa = Math.max(0, totalEtapa - notaLancada);
+
+    // se já atingiu a média, some tudo
+    const atingiuMedia = temAlgumaNota && notaLancada >= mediaEtapa - 1e-9;
+
+    if (!temAlgumaNota || atingiuMedia) return null;
+
+    return (
+      <>
+        <span>
+          Faltam <b className="text-[#1f2a6a]">{fmt1(faltam)}</b> pontos para atingir a média da etapa.
+        </span>
+        <span>
+          Ainda há <b className="text-[#1f2a6a]">{fmt1(emDisputa)}</b> pontos em disputa.
+        </span>
+      </>
+    );
+  })()}
+</div>
+
                   </div>
 
                   <div className="flex flex-wrap gap-2">
