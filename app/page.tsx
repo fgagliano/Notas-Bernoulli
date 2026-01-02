@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 
+type AlunoRow = { id: number; nome: string; serie: string; ativo: boolean };
+
 type Lancamento = {
   id: number;
   criado_em: string;
@@ -20,7 +22,13 @@ function toNumber(v: string) {
   return Number.isFinite(x) ? x : NaN;
 }
 
+const LS_KEY_ALUNO = "notas_ultimo_aluno";
+
 export default function Page() {
+  // ✅ lista de alunos (para a combobox)
+  const [alunos, setAlunos] = useState<AlunoRow[]>([]);
+
+  // ✅ aluno selecionado (persistente)
   const [aluno, setAluno] = useState("");
   const [serie, setSerie] = useState("");
   const [etapa, setEtapa] = useState<1 | 2 | 3>(1);
@@ -41,12 +49,34 @@ export default function Page() {
   const valorMedia = useMemo(() => toNumber(valorMediaStr), [valorMediaStr]);
   const nota = useMemo(() => (notaStr.trim() === "" ? null : toNumber(notaStr)), [notaStr]);
 
+  // ✅ ao carregar a página: restaura aluno salvo e busca a lista de alunos
+  useEffect(() => {
+    const saved = localStorage.getItem(LS_KEY_ALUNO);
+    if (saved) setAluno(saved);
+
+    (async () => {
+      const r = await fetch("/api/alunos", { cache: "no-store" });
+      const j = await r.json().catch(() => ({}));
+      if (r.ok) setAlunos(j.data || []);
+    })();
+  }, []);
+
+  // ✅ sempre que mudar o aluno, salva no localStorage
+  useEffect(() => {
+    localStorage.setItem(LS_KEY_ALUNO, aluno);
+  }, [aluno]);
+
+  // ✅ (opcional, mas útil): quando escolher um aluno existente, preenche a Série automaticamente
+  useEffect(() => {
+    const found = alunos.find((a) => a.nome.toLowerCase() === aluno.trim().toLowerCase());
+    if (found) setSerie(found.serie);
+  }, [aluno, alunos]);
+
   // Auto-preenche Valor Média = 60% do Valor Máx (editável)
   useEffect(() => {
     if (valorMaxStr.trim() === "") return;
     const vm = toNumber(valorMaxStr);
     if (!Number.isFinite(vm)) return;
-    // só auto-seta se o campo de média estiver vazio ou se estiver "casando" com o auto anterior
     setValorMediaStr((prev) => {
       if (prev.trim() === "") return String((vm * 0.6).toFixed(2)).replace(".", ",");
       return prev;
@@ -76,12 +106,10 @@ export default function Page() {
       disciplina: disciplina.trim(),
       avaliacao: avaliacao.trim(),
       valor_max: valorMax,
-      // se não preencher, a API pode calcular; mas aqui mandamos o valor
       valor_media: valorMedia,
       nota: nota
     };
 
-    // validações mínimas
     if (!payload.aluno || !payload.serie || !payload.disciplina || !payload.avaliacao) {
       setErro("Preencha Aluno, Série, Disciplina e Avaliação.");
       return;
@@ -137,9 +165,20 @@ export default function Page() {
 
       <form onSubmit={salvar} style={{ border: "1px solid #ddd", borderRadius: 10, padding: 14, marginTop: 12 }}>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          {/* ✅ Aluno = combobox com datalist + persistência */}
           <label style={{ display: "grid", gap: 6 }}>
             <span>Aluno</span>
-            <input value={aluno} onChange={(e) => setAluno(e.target.value)} placeholder="ex: Sofia" />
+            <input
+              list="alunos-list"
+              value={aluno}
+              onChange={(e) => setAluno(e.target.value)}
+              placeholder="Digite ou selecione"
+            />
+            <datalist id="alunos-list">
+              {alunos.map((a) => (
+                <option key={a.id} value={a.nome} />
+              ))}
+            </datalist>
           </label>
 
           <label style={{ display: "grid", gap: 6 }}>
@@ -168,32 +207,17 @@ export default function Page() {
 
           <label style={{ display: "grid", gap: 6 }}>
             <span>Valor Máx</span>
-            <input
-              inputMode="decimal"
-              value={valorMaxStr}
-              onChange={(e) => setValorMaxStr(e.target.value)}
-              placeholder="ex: 8"
-            />
+            <input inputMode="decimal" value={valorMaxStr} onChange={(e) => setValorMaxStr(e.target.value)} placeholder="ex: 8" />
           </label>
 
           <label style={{ display: "grid", gap: 6 }}>
             <span>Valor Média (60%)</span>
-            <input
-              inputMode="decimal"
-              value={valorMediaStr}
-              onChange={(e) => setValorMediaStr(e.target.value)}
-              placeholder="ex: 4,8"
-            />
+            <input inputMode="decimal" value={valorMediaStr} onChange={(e) => setValorMediaStr(e.target.value)} placeholder="ex: 4,8" />
           </label>
 
           <label style={{ display: "grid", gap: 6 }}>
             <span>Nota</span>
-            <input
-              inputMode="decimal"
-              value={notaStr}
-              onChange={(e) => setNotaStr(e.target.value)}
-              placeholder="vazio = ainda não lançou"
-            />
+            <input inputMode="decimal" value={notaStr} onChange={(e) => setNotaStr(e.target.value)} placeholder="vazio = ainda não lançou" />
           </label>
         </div>
 
@@ -248,3 +272,4 @@ export default function Page() {
     </main>
   );
 }
+
