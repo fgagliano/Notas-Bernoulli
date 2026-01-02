@@ -187,17 +187,22 @@ export default function Home() {
   }
 
   // Tema (Bernoulli-like)
-  const bernTeal = "text-[#14b8a6]"; // turquesa
-  const bernNavy = "text-[#1f2a6a]"; // azul escuro
+  const bernTeal = "text-[#14b8a6]";
+  const bernNavy = "text-[#1f2a6a]";
   const focusRing = "focus:ring-2 focus:ring-[#14b8a6] focus:border-[#14b8a6]";
 
-  // Inputs: agora com fundo turquesa bem claro e borda mais forte (pra “aparecer”)
-  const inputField =
-    "rounded-lg border border-[#2dd4bf]/60 bg-[#e6fffb] px-2 py-1 text-slate-900 placeholder:text-slate-500 " +
-    "shadow-sm outline-none " +
+  // Padding responsivo para células
+  const td = "px-2 sm:px-4 py-2";
+
+  // Inputs numéricos responsivos (MOBILE bem estreito)
+  const inputNum =
+    "w-14 sm:w-20 md:w-24 text-right rounded-lg border border-[#2dd4bf]/60 bg-[#e6fffb] " +
+    "px-2 py-1 text-slate-900 placeholder:text-slate-500 shadow-sm outline-none " +
     focusRing;
 
-  const inputNum = inputField + " w-24 text-right"; // mais estreito e visível
+  const inputAvaliacao =
+    "w-full rounded-lg border px-2 py-1 shadow-sm outline-none " +
+    "border-white/50 bg-white/70 focus:ring-2 focus:ring-[#14b8a6] focus:border-[#14b8a6]";
 
   return (
     <div className="min-h-screen text-slate-900">
@@ -218,7 +223,6 @@ export default function Home() {
           </div>
 
           <div className="flex flex-wrap gap-2">
-            {/* Cards do topo com visual Bernoulli */}
             <div className="rounded-2xl border border-white/30 bg-white/60 p-3 shadow-sm backdrop-blur">
               <div className="text-xs font-semibold text-slate-700">Ano</div>
               <select
@@ -342,13 +346,13 @@ export default function Home() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="bg-gradient-to-r from-[#1f2a6a] to-[#14b8a6] text-left text-xs text-white">
-                        <th className="px-4 py-3">Avaliação</th>
-                        <th className="px-4 py-3">Valor Máx</th>
-                        <th className="px-4 py-3 text-center">Média (60%)</th>
-                        <th className="px-4 py-3">Nota</th>
-                        <th className="px-4 py-3 text-center">Média Acum.</th>
-                        <th className="px-4 py-3 text-center">Nota Acum.</th>
-                        <th className="px-4 py-3 text-right">Ações</th>
+                        <th className="px-2 sm:px-4 py-3">Avaliação</th>
+                        <th className="px-2 sm:px-4 py-3">Valor Máx</th>
+                        <th className="px-2 sm:px-4 py-3 text-center">Média (60%)</th>
+                        <th className="px-2 sm:px-4 py-3">Nota</th>
+                        <th className="px-2 sm:px-4 py-3 text-center">Média Acum.</th>
+                        <th className="px-2 sm:px-4 py-3 text-center">Nota Acum.</th>
+                        <th className="px-2 sm:px-4 py-3 text-right">Ações</th>
                       </tr>
                     </thead>
 
@@ -369,7 +373,6 @@ export default function Home() {
 
                         const mediaLinha = round1(valorMaxEff * 0.6);
 
-                        // Acumulados: só contam avaliações com nota preenchida (!= null)
                         const subset = list.slice(0, idx + 1);
 
                         const subsetLancado = subset.filter((r) => {
@@ -405,31 +408,24 @@ export default function Home() {
                           }, 0)
                         );
 
-                        // Nota vermelha se abaixo da média DA LINHA (quando nota existe)
                         const notaAbaixoDaMediaLinha = notaEff !== null && notaEff + 1e-9 < mediaLinha;
-
-                        // Nota Acum vermelha se abaixo da média acumulada (quando algo lançado)
                         const notaAcumAbaixoMediaAcum =
                           subsetLancado.length > 0 && notaAcumulada + 1e-9 < mediaAcumulada;
 
                         return (
                           <tr key={row.id} className="border-t border-white/30 bg-white/40">
-                            <td className="px-4 py-2">
+                            <td className={td}>
                               <input
                                 className={[
-                                  "w-full rounded-lg border px-2 py-1 shadow-sm outline-none",
-                                  isAjuste
-                                    ? "border-[#14b8a6]/50 bg-[#ccfbf1]"
-                                    : "border-white/50 bg-white/70",
-                                  "focus:ring-2 focus:ring-[#14b8a6] focus:border-[#14b8a6]",
+                                  inputAvaliacao,
+                                  isAjuste ? "border-[#14b8a6]/50 bg-[#ccfbf1]" : "",
                                 ].join(" ")}
                                 value={row.avaliacao || ""}
                                 onChange={(e) => patchLinha(row.id, { avaliacao: e.target.value })}
                               />
                             </td>
 
-                            {/* Valor Máx: mais visível, com fundo teal claro */}
-                            <td className="px-4 py-2">
+                            <td className={td}>
                               <input
                                 type="text"
                                 inputMode="decimal"
@@ -456,15 +452,13 @@ export default function Home() {
                               />
                             </td>
 
-                            {/* Média (60%) centralizada */}
-                            <td className="px-4 py-2 text-center">
+                            <td className={`${td} text-center`}>
                               <span className="inline-flex rounded-lg bg-white/70 px-2 py-1 text-xs font-semibold text-slate-800 shadow-sm">
                                 {fmt1(mediaLinha)}
                               </span>
                             </td>
 
-                            {/* Nota */}
-                            <td className="px-4 py-2">
+                            <td className={td}>
                               <input
                                 type="text"
                                 inputMode="decimal"
@@ -501,15 +495,13 @@ export default function Home() {
                               />
                             </td>
 
-                            {/* Média Acum centralizada */}
-                            <td className="px-4 py-2 text-center">
+                            <td className={`${td} text-center`}>
                               <span className="inline-flex rounded-lg bg-white/70 px-2 py-1 text-xs font-semibold text-slate-800 shadow-sm">
                                 {fmt1(mediaAcumulada)}
                               </span>
                             </td>
 
-                            {/* Nota Acum centralizada e vermelha se abaixo */}
-                            <td className="px-4 py-2 text-center">
+                            <td className={`${td} text-center`}>
                               <span
                                 className={[
                                   "inline-flex rounded-lg bg-white/70 px-2 py-1 text-xs font-semibold shadow-sm",
@@ -520,7 +512,7 @@ export default function Home() {
                               </span>
                             </td>
 
-                            <td className="px-4 py-2 text-right">
+                            <td className={`${td} text-right`}>
                               <button
                                 className="rounded-lg px-2 py-1 text-xs font-semibold text-red-700 hover:bg-red-50/80"
                                 onClick={() => delLinha(row.id)}
