@@ -5,4 +5,4 @@ export default function Home() {
       <p>Deploy ok ✅</p>
     </main>
   );
-}
+} 
