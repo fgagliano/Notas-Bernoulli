@@ -27,6 +27,11 @@ function round2(n: number) {
   return Math.round(n * 100) / 100;
 }
 
+function toNum(v: any): number {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : 0;
+}
+
 export default function Home() {
   const [ano, setAno] = useState<number>(2025);
   const [aluno, setAluno] = useState<(typeof ALUNOS)[number]>("Sofia");
@@ -68,7 +73,7 @@ export default function Home() {
   }, [ano, aluno, etapa]);
 
   const porDisciplina = useMemo(() => {
-    // Evita MapIterator (problema de target/tsconfig no build)
+    // Record para evitar MapIterator (target do TS no build)
     const map: Record<string, NotaRow[]> = {};
 
     for (const r of rows) {
@@ -132,14 +137,12 @@ export default function Home() {
     const ajuste = list.find((r) => r.avaliacao?.toLowerCase() === "ajuste");
     const somaSemAjuste = list
       .filter((r) => r.avaliacao?.toLowerCase() !== "ajuste")
-      .reduce((acc, r) => acc + (Number(r.valor_max) || 0), 0);
+      .reduce((acc, r) => acc + toNum(r.valor_max), 0);
 
     const diff = round2(totalEtapa - somaSemAjuste);
 
     if (diff < 0) {
-      setMsg(
-        `A disciplina "${disciplina}" passou do total (${somaSemAjuste} > ${totalEtapa}). Ajuste os valores.`
-      );
+      setMsg(`A disciplina "${disciplina}" passou do total (${somaSemAjuste} > ${totalEtapa}). Ajuste os valores.`);
       return;
     }
 
@@ -163,9 +166,9 @@ export default function Home() {
   }
 
   function disciplinaResumo(list: NotaRow[]) {
-    const somaMax = round2(list.reduce((a, r) => a + (Number(r.valor_max) || 0), 0));
-    const somaNota = round2(list.reduce((a, r) => a + (Number(r.nota) || 0), 0));
-    const somaMedia60 = round2(list.reduce((a, r) => a + round2((Number(r.valor_max) || 0) * 0.6), 0));
+    const somaMax = round2(list.reduce((a, r) => a + toNum(r.valor_max), 0));
+    const somaNota = round2(list.reduce((a, r) => a + toNum(r.nota), 0));
+    const somaMedia60 = round2(list.reduce((a, r) => a + round2(toNum(r.valor_max) * 0.6), 0));
     const ok = Math.abs(somaMax - totalEtapa) < 0.001;
     return { somaMax, somaNota, somaMedia60, ok };
   }
@@ -303,13 +306,27 @@ export default function Home() {
                         <th className="px-4 py-3">Valor Máx</th>
                         <th className="px-4 py-3">Média (60%)</th>
                         <th className="px-4 py-3">Nota</th>
+                        <th className="px-4 py-3">Média Acum.</th>
+                        <th className="px-4 py-3">Nota Acum.</th>
                         <th className="px-4 py-3 text-right">Ações</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {list.map((row) => {
-                        const media60 = round2((Number(row.valor_max) || 0) * 0.6);
+                      {list.map((row, idx) => {
+                        const media60 = round2(toNum(row.valor_max) * 0.6);
                         const isAjuste = row.avaliacao?.toLowerCase() === "ajuste";
+
+                        // Acumulados: consideram SOMENTE avaliações com nota preenchida
+                        const subset = list.slice(0, idx + 1);
+                        const subsetLancado = subset.filter((r) => r.nota !== null && r.nota !== undefined);
+
+                        const mediaAcumulada = round2(
+                          subsetLancado.reduce((acc, r) => acc + round2(toNum(r.valor_max) * 0.6), 0)
+                        );
+
+                        const notaAcumulada = round2(
+                          subsetLancado.reduce((acc, r) => acc + toNum(r.nota), 0)
+                        );
 
                         return (
                           <tr key={row.id} className="border-t">
@@ -351,6 +368,18 @@ export default function Home() {
                                   patchLinha(row.id, { nota: e.target.value === "" ? null : Number(e.target.value) })
                                 }
                               />
+                            </td>
+
+                            <td className="px-4 py-2">
+                              <span className="inline-flex rounded-lg bg-slate-100 px-2 py-1 text-xs">
+                                {mediaAcumulada}
+                              </span>
+                            </td>
+
+                            <td className="px-4 py-2">
+                              <span className="inline-flex rounded-lg bg-slate-100 px-2 py-1 text-xs">
+                                {notaAcumulada}
+                              </span>
                             </td>
 
                             <td className="px-4 py-2 text-right">
