@@ -325,8 +325,17 @@ export default function Home() {
     // quanto falta para atingir a média
     const faltam = Math.max(0, mediaEtapa - notaLancada);
 
-    // ainda há pontos "em disputa": total - nota já obtida
-    const emDisputa = Math.max(0, totalEtapa - notaLancada);
+    // ainda há pontos "em disputa": soma do valor_max das avaliações SEM nota lançada
+const emDisputa = round1(
+  list
+    .filter((rr) => {
+      const semNota = rr.nota === null || rr.nota === undefined;
+      const isAjuste = (rr.avaliacao || "").toLowerCase() === "ajuste";
+      return semNota && !isAjuste; // não conta "Ajuste" como disputa
+    })
+    .reduce((acc, rr) => acc + toNum(rr.valor_max), 0)
+);
+
 
     // se já atingiu a média, some tudo
     const atingiuMedia = temAlgumaNota && notaLancada >= mediaEtapa - 1e-9;
