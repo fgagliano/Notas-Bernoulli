@@ -191,10 +191,8 @@ export default function Home() {
   const bernNavy = "text-[#1f2a6a]";
   const focusRing = "focus:ring-2 focus:ring-[#14b8a6] focus:border-[#14b8a6]";
 
-  // Padding responsivo para células
   const td = "px-2 sm:px-4 py-2";
 
-  // Inputs numéricos responsivos (MOBILE bem estreito)
   const inputNum =
     "w-14 sm:w-20 md:w-24 text-right rounded-lg border border-[#2dd4bf]/60 bg-[#e6fffb] " +
     "px-2 py-1 text-slate-900 placeholder:text-slate-500 shadow-sm outline-none " +
@@ -206,7 +204,6 @@ export default function Home() {
 
   return (
     <div className="min-h-screen text-slate-900">
-      {/* Fundo estilo Bernoulli */}
       <div className="absolute inset-0 -z-10 bg-gradient-to-r from-[#c9f7f1] via-[#bfeff2] to-[#88dfd7]" />
       <div className="absolute inset-0 -z-10 opacity-40 [background-image:radial-gradient(circle_at_1px_1px,rgba(107,114,128,0.25)_1px,transparent_0)] [background-size:22px_22px]" />
 
@@ -412,6 +409,10 @@ export default function Home() {
                         const notaAcumAbaixoMediaAcum =
                           subsetLancado.length > 0 && notaAcumulada + 1e-9 < mediaAcumulada;
 
+                        // ✅ REGRA NOVA:
+                        // Só exibe Média Acum / Nota Acum se a LINHA atual tem nota lançada.
+                        const notaDaLinhaExiste = notaEff !== null;
+
                         return (
                           <tr key={row.id} className="border-t border-white/30 bg-white/40">
                             <td className={td}>
@@ -495,21 +496,31 @@ export default function Home() {
                               />
                             </td>
 
+                            {/* ✅ Média Acum: só aparece se a linha tem nota */}
                             <td className={`${td} text-center`}>
-                              <span className="inline-flex rounded-lg bg-white/70 px-2 py-1 text-xs font-semibold text-slate-800 shadow-sm">
-                                {fmt1(mediaAcumulada)}
-                              </span>
+                              {notaDaLinhaExiste ? (
+                                <span className="inline-flex rounded-lg bg-white/70 px-2 py-1 text-xs font-semibold text-slate-800 shadow-sm">
+                                  {fmt1(mediaAcumulada)}
+                                </span>
+                              ) : (
+                                <span className="text-transparent select-none">.</span>
+                              )}
                             </td>
 
+                            {/* ✅ Nota Acum: só aparece se a linha tem nota */}
                             <td className={`${td} text-center`}>
-                              <span
-                                className={[
-                                  "inline-flex rounded-lg bg-white/70 px-2 py-1 text-xs font-semibold shadow-sm",
-                                  notaAcumAbaixoMediaAcum ? "text-red-600" : "text-slate-800",
-                                ].join(" ")}
-                              >
-                                {fmt1(notaAcumulada)}
-                              </span>
+                              {notaDaLinhaExiste ? (
+                                <span
+                                  className={[
+                                    "inline-flex rounded-lg bg-white/70 px-2 py-1 text-xs font-semibold shadow-sm",
+                                    notaAcumAbaixoMediaAcum ? "text-red-600" : "text-slate-800",
+                                  ].join(" ")}
+                                >
+                                  {fmt1(notaAcumulada)}
+                                </span>
+                              ) : (
+                                <span className="text-transparent select-none">.</span>
+                              )}
                             </td>
 
                             <td className={`${td} text-right`}>
