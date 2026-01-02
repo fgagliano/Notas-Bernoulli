@@ -2,11 +2,13 @@
   "name": "notas-bernoulli",
   "private": true,
   "version": "1.0.0",
-  "type": "module",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start"
+  },
+  "engines": {
+    "node": ">=18.17.0"
   },
   "dependencies": {
     "next": "14.2.5",
