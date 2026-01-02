@@ -23,6 +23,10 @@ const ETAPA_TOTAL: Record<number, number> = {
   3: 40,
 };
 
+function round1(n: number) {
+  return Math.round(n * 10) / 10;
+}
+
 function round2(n: number) {
   return Math.round(n * 100) / 100;
 }
@@ -30,6 +34,10 @@ function round2(n: number) {
 function toNum(v: any): number {
   const n = Number(v);
   return Number.isFinite(n) ? n : 0;
+}
+
+function fmt1(n: number) {
+  return round1(n).toFixed(1);
 }
 
 export default function Home() {
@@ -73,7 +81,6 @@ export default function Home() {
   }, [ano, aluno, etapa]);
 
   const porDisciplina = useMemo(() => {
-    // Record para evitar MapIterator (target do TS no build)
     const map: Record<string, NotaRow[]> = {};
 
     for (const r of rows) {
@@ -304,29 +311,36 @@ export default function Home() {
                       <tr>
                         <th className="px-4 py-3">Avaliação</th>
                         <th className="px-4 py-3">Valor Máx</th>
-                        <th className="px-4 py-3">Média (60%)</th>
+                        <th className="px-4 py-3 text-center">Média (60%)</th>
                         <th className="px-4 py-3">Nota</th>
-                        <th className="px-4 py-3">Média Acum.</th>
-                        <th className="px-4 py-3">Nota Acum.</th>
+                        <th className="px-4 py-3 text-center">Média Acum.</th>
+                        <th className="px-4 py-3 text-center">Nota Acum.</th>
                         <th className="px-4 py-3 text-right">Ações</th>
                       </tr>
                     </thead>
+
                     <tbody>
                       {list.map((row, idx) => {
-                        const media60 = round2(toNum(row.valor_max) * 0.6);
+                        const media60 = round1(toNum(row.valor_max) * 0.6);
                         const isAjuste = row.avaliacao?.toLowerCase() === "ajuste";
 
-                        // Acumulados: consideram SOMENTE avaliações com nota preenchida
+                        // Acumulados: só contam avaliações com nota preenchida
                         const subset = list.slice(0, idx + 1);
                         const subsetLancado = subset.filter((r) => r.nota !== null && r.nota !== undefined);
 
-                        const mediaAcumulada = round2(
-                          subsetLancado.reduce((acc, r) => acc + round2(toNum(r.valor_max) * 0.6), 0)
+                        const mediaAcumulada = round1(
+                          subsetLancado.reduce((acc, r) => acc + round1(toNum(r.valor_max) * 0.6), 0)
                         );
 
-                        const notaAcumulada = round2(
-                          subsetLancado.reduce((acc, r) => acc + toNum(r.nota), 0)
-                        );
+                        const notaAcumulada = round1(subsetLancado.reduce((acc, r) => acc + toNum(r.nota), 0));
+
+                        const abaixoMediaAcum =
+                          subsetLancado.length > 0 && notaAcumulada + 1e-9 < mediaAcumulada;
+
+                        const inputBase =
+                          "rounded-lg border px-2 py-1 [appearance:textfield] " +
+                          "[&::-webkit-outer-spin-button]:appearance-none " +
+                          "[&::-webkit-inner-spin-button]:appearance-none";
 
                         return (
                           <tr key={row.id} className="border-t">
@@ -341,44 +355,71 @@ export default function Home() {
                               />
                             </td>
 
+                            {/* Valor Máx (mais estreito, step 0.1, 1 casa) */}
                             <td className="px-4 py-2">
                               <input
                                 type="number"
-                                step="0.01"
+                                inputMode="decimal"
+                                step="0.1"
                                 className={[
-                                  "w-28 rounded-lg border px-2 py-1",
+                                  inputBase,
+                                  "w-20 text-right",
                                   isAjuste ? "bg-emerald-50" : "bg-white",
                                 ].join(" ")}
-                                value={row.valor_max ?? 0}
-                                onChange={(e) => patchLinha(row.id, { valor_max: Number(e.target.value) })}
+                                value={fmt1(toNum(row.valor_max))}
+                                onChange={(e) => {
+                                  const raw = e.target.value;
+                                  if (raw === "" || raw === "-" || raw === "." || raw === "-.") {
+                                    return patchLinha(row.id, { valor_max: 0 });
+                                  }
+                                  patchLinha(row.id, { valor_max: toNum(raw) });
+                                }}
                               />
                             </td>
 
-                            <td className="px-4 py-2">
-                              <span className="inline-flex rounded-lg bg-slate-100 px-2 py-1 text-xs">{media60}</span>
+                            {/* Média (60%) centralizada */}
+                            <td className="px-4 py-2 text-center">
+                              <span className="inline-flex rounded-lg bg-slate-100 px-2 py-1 text-xs">
+                                {fmt1(media60)}
+                              </span>
                             </td>
 
+                            {/* Nota (mais estreito, step 0.1, 1 casa, vermelho se abaixo da média acumulada) */}
                             <td className="px-4 py-2">
                               <input
                                 type="number"
-                                step="0.01"
-                                className="w-28 rounded-lg border bg-white px-2 py-1"
-                                value={row.nota ?? ""}
+                                inputMode="decimal"
+                                step="0.1"
+                                className={[
+                                  inputBase,
+                                  "w-20 text-right bg-white",
+                                  abaixoMediaAcum ? "text-red-600 font-semibold" : "text-slate-900",
+                                ].join(" ")}
+                                value={row.nota === null || row.nota === undefined ? "" : fmt1(toNum(row.nota))}
                                 onChange={(e) =>
-                                  patchLinha(row.id, { nota: e.target.value === "" ? null : Number(e.target.value) })
+                                  patchLinha(row.id, {
+                                    nota: e.target.value === "" ? null : toNum(e.target.value),
+                                  })
                                 }
                               />
                             </td>
 
-                            <td className="px-4 py-2">
+                            {/* Média Acum centralizada */}
+                            <td className="px-4 py-2 text-center">
                               <span className="inline-flex rounded-lg bg-slate-100 px-2 py-1 text-xs">
-                                {mediaAcumulada}
+                                {fmt1(mediaAcumulada)}
                               </span>
                             </td>
 
-                            <td className="px-4 py-2">
-                              <span className="inline-flex rounded-lg bg-slate-100 px-2 py-1 text-xs">
-                                {notaAcumulada}
+                            {/* Nota Acum centralizada e vermelha se abaixo da média acumulada */}
+                            <td className="px-4 py-2 text-center">
+                              <span
+                                className={[
+                                  "inline-flex rounded-lg bg-slate-100 px-2 py-1 text-xs",
+                                  abaixoMediaAcum ? "text-red-600 font-semibold" : "text-slate-900",
+                                ].join(" ")}
+                              >
+                                {fmt1(notaAcumulada)}
                               </span>
                             </td>
 
