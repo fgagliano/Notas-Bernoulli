@@ -63,27 +63,27 @@ export default function Home() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [aluno, etapa]);
 
-  const porDisciplina = useMemo(() => {
-    const map = new Map<string, NotaRow[]>();
+    const porDisciplina = useMemo(() => {
+    const map: Record<string, NotaRow[]> = {};
+
     for (const r of rows) {
       const key = (r.disciplina || "").trim() || "(Sem disciplina)";
-      if (!map.has(key)) map.set(key, []);
-      map.get(key)!.push(r);
+      (map[key] ||= []).push(r);
     }
 
     // "Ajuste" por último
-    for (const [k, list] of map.entries()) {
-      list.sort((a, b) => {
+    Object.keys(map).forEach((k) => {
+      map[k].sort((a, b) => {
         const aa = a.avaliacao?.toLowerCase() === "ajuste" ? 1 : 0;
         const bb = b.avaliacao?.toLowerCase() === "ajuste" ? 1 : 0;
         if (aa !== bb) return aa - bb;
         return (a.created_at || "").localeCompare(b.created_at || "");
       });
-      map.set(k, list);
-    }
+    });
 
-    return Array.from(map.entries());
+    return Object.entries(map);
   }, [rows]);
+
 
   async function addLinha(disciplina: string) {
     setMsg("");
