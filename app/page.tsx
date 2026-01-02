@@ -5,6 +5,7 @@ import { supabase } from "../lib/supabaseClient";
 
 type NotaRow = {
   id: number;
+  ano: number;
   aluno: string;
   etapa: number;
   disciplina: string;
@@ -27,8 +28,10 @@ function round2(n: number) {
 }
 
 export default function Home() {
+  const [ano, setAno] = useState<number>(2025);
   const [aluno, setAluno] = useState<(typeof ALUNOS)[number]>("Sofia");
   const [etapa, setEtapa] = useState<1 | 2 | 3>(1);
+
   const [rows, setRows] = useState<NotaRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<string>("");
@@ -42,6 +45,7 @@ export default function Home() {
     const { data, error } = await supabase
       .from("notas")
       .select("*")
+      .eq("ano", ano)
       .eq("aluno", aluno)
       .eq("etapa", etapa)
       .order("disciplina", { ascending: true })
@@ -61,9 +65,10 @@ export default function Home() {
   useEffect(() => {
     carregar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [aluno, etapa]);
+  }, [ano, aluno, etapa]);
 
-    const porDisciplina = useMemo(() => {
+  const porDisciplina = useMemo(() => {
+    // Evita MapIterator (problema de target/tsconfig no build)
     const map: Record<string, NotaRow[]> = {};
 
     for (const r of rows) {
@@ -84,10 +89,10 @@ export default function Home() {
     return Object.entries(map);
   }, [rows]);
 
-
   async function addLinha(disciplina: string) {
     setMsg("");
     const { error } = await supabase.from("notas").insert({
+      ano,
       aluno,
       etapa,
       disciplina,
@@ -132,7 +137,9 @@ export default function Home() {
     const diff = round2(totalEtapa - somaSemAjuste);
 
     if (diff < 0) {
-      setMsg(`A disciplina "${disciplina}" passou do total (${somaSemAjuste} > ${totalEtapa}). Ajuste os valores.`);
+      setMsg(
+        `A disciplina "${disciplina}" passou do total (${somaSemAjuste} > ${totalEtapa}). Ajuste os valores.`
+      );
       return;
     }
 
@@ -141,6 +148,7 @@ export default function Home() {
       if (error) return setMsg(error.message);
     } else {
       const { error } = await supabase.from("notas").insert({
+        ano,
         aluno,
         etapa,
         disciplina,
@@ -174,6 +182,18 @@ export default function Home() {
           </div>
 
           <div className="flex flex-wrap gap-2">
+            <div className="rounded-xl border bg-white p-2 shadow-sm">
+              <div className="text-xs text-slate-500">Ano</div>
+              <select
+                className="mt-1 w-28 rounded-lg border px-2 py-1 text-sm"
+                value={ano}
+                onChange={(e) => setAno(Number(e.target.value))}
+              >
+                <option value={2025}>2025</option>
+                <option value={2026}>2026</option>
+              </select>
+            </div>
+
             <div className="rounded-xl border bg-white p-2 shadow-sm">
               <div className="text-xs text-slate-500">Aluno</div>
               <select
@@ -365,4 +385,4 @@ export default function Home() {
       </div>
     </div>
   );
-} 
+}
