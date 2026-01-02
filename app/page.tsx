@@ -38,7 +38,7 @@ function fmt1(n: number) {
 function parsePtNumber(s: string): number | null {
   const t = (s ?? "").trim();
   if (t === "") return null;
-  const normalized = t.replace(/\./g, "").replace(",", "."); // (8.500 -> 8500) e (8,5 -> 8.5)
+  const normalized = t.replace(/\./g, "").replace(",", ".");
   const n = Number(normalized);
   return Number.isFinite(n) ? n : null;
 }
@@ -54,7 +54,6 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<string>("");
 
-  // buffer de edição (pra permitir digitar vírgula/decimal sem “brigar” com formatação)
   const [edit, setEdit] = useState<EditBuffer>({});
 
   const totalEtapa = ETAPA_TOTAL[etapa];
@@ -81,7 +80,7 @@ export default function Home() {
     }
 
     setRows((data as NotaRow[]) || []);
-    setEdit({}); // limpa buffers ao recarregar (evita inconsistências)
+    setEdit({});
   }
 
   useEffect(() => {
@@ -187,24 +186,43 @@ export default function Home() {
     return { somaMax, somaNota, somaMedia60, ok };
   }
 
-  const inputNumBase = "w-20 rounded-lg border px-2 py-1 text-right"; // setinhas ficam (não escondi)
+  // Tema (Bernoulli-like)
+  const bernTeal = "text-[#14b8a6]"; // turquesa
+  const bernNavy = "text-[#1f2a6a]"; // azul escuro
+  const focusRing = "focus:ring-2 focus:ring-[#14b8a6] focus:border-[#14b8a6]";
+
+  // Inputs: agora com fundo turquesa bem claro e borda mais forte (pra “aparecer”)
+  const inputField =
+    "rounded-lg border border-[#2dd4bf]/60 bg-[#e6fffb] px-2 py-1 text-slate-900 placeholder:text-slate-500 " +
+    "shadow-sm outline-none " +
+    focusRing;
+
+  const inputNum = inputField + " w-24 text-right"; // mais estreito e visível
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900">
+    <div className="min-h-screen text-slate-900">
+      {/* Fundo estilo Bernoulli */}
+      <div className="absolute inset-0 -z-10 bg-gradient-to-r from-[#c9f7f1] via-[#bfeff2] to-[#88dfd7]" />
+      <div className="absolute inset-0 -z-10 opacity-40 [background-image:radial-gradient(circle_at_1px_1px,rgba(107,114,128,0.25)_1px,transparent_0)] [background-size:22px_22px]" />
+
       <div className="mx-auto max-w-6xl p-4 sm:p-6">
         <header className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">Notas</h1>
-            <p className="text-sm text-slate-600">
+          <div className="rounded-2xl border border-white/30 bg-white/60 p-4 shadow-sm backdrop-blur">
+            <div className="flex items-baseline gap-2">
+              <h1 className={`text-2xl font-extrabold tracking-tight ${bernNavy}`}>Notas</h1>
+              <span className={`text-sm font-semibold ${bernTeal}`}>Bernoulli</span>
+            </div>
+            <p className="mt-1 text-sm text-slate-700">
               Etapas: <b>30</b>, <b>30</b>, <b>40</b>. Cada disciplina deve fechar o total da etapa.
             </p>
           </div>
 
           <div className="flex flex-wrap gap-2">
-            <div className="rounded-xl border bg-white p-2 shadow-sm">
-              <div className="text-xs text-slate-500">Ano</div>
+            {/* Cards do topo com visual Bernoulli */}
+            <div className="rounded-2xl border border-white/30 bg-white/60 p-3 shadow-sm backdrop-blur">
+              <div className="text-xs font-semibold text-slate-700">Ano</div>
               <select
-                className="mt-1 w-28 rounded-lg border px-2 py-1 text-sm"
+                className={`mt-1 w-28 rounded-lg border border-[#2dd4bf]/50 bg-white/80 px-2 py-1 text-sm shadow-sm outline-none ${focusRing}`}
                 value={ano}
                 onChange={(e) => setAno(Number(e.target.value))}
               >
@@ -213,10 +231,10 @@ export default function Home() {
               </select>
             </div>
 
-            <div className="rounded-xl border bg-white p-2 shadow-sm">
-              <div className="text-xs text-slate-500">Aluno</div>
+            <div className="rounded-2xl border border-white/30 bg-white/60 p-3 shadow-sm backdrop-blur">
+              <div className="text-xs font-semibold text-slate-700">Aluno</div>
               <select
-                className="mt-1 w-40 rounded-lg border px-2 py-1 text-sm"
+                className={`mt-1 w-40 rounded-lg border border-[#2dd4bf]/50 bg-white/80 px-2 py-1 text-sm shadow-sm outline-none ${focusRing}`}
                 value={aluno}
                 onChange={(e) => setAluno(e.target.value as any)}
               >
@@ -228,15 +246,17 @@ export default function Home() {
               </select>
             </div>
 
-            <div className="rounded-xl border bg-white p-2 shadow-sm">
-              <div className="text-xs text-slate-500">Etapa</div>
+            <div className="rounded-2xl border border-white/30 bg-white/60 p-3 shadow-sm backdrop-blur">
+              <div className="text-xs font-semibold text-slate-700">Etapa</div>
               <div className="mt-1 flex gap-1">
                 {[1, 2, 3].map((n) => (
                   <button
                     key={n}
                     className={[
-                      "rounded-lg px-3 py-1 text-sm font-medium",
-                      etapa === n ? "bg-slate-900 text-white" : "bg-slate-100 hover:bg-slate-200",
+                      "rounded-lg px-3 py-1 text-sm font-semibold shadow-sm",
+                      etapa === n
+                        ? "bg-[#1f2a6a] text-white"
+                        : "bg-white/80 text-slate-800 hover:bg-white",
                     ].join(" ")}
                     onClick={() => setEtapa(n as any)}
                   >
@@ -244,11 +264,13 @@ export default function Home() {
                   </button>
                 ))}
               </div>
-              <div className="mt-1 text-xs text-slate-500">Total: {totalEtapa}</div>
+              <div className="mt-1 text-xs text-slate-700">
+                Total: <b>{totalEtapa}</b>
+              </div>
             </div>
 
             <button
-              className="rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-slate-800"
+              className="rounded-2xl bg-[#14b8a6] px-4 py-3 text-sm font-extrabold text-white shadow-sm hover:bg-[#10a99a] active:translate-y-[1px]"
               onClick={criarDisciplina}
             >
               + Disciplina
@@ -257,16 +279,20 @@ export default function Home() {
         </header>
 
         {msg && (
-          <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{msg}</div>
+          <div className="mb-4 rounded-2xl border border-red-200 bg-white/70 p-3 text-sm text-red-700 shadow-sm backdrop-blur">
+            {msg}
+          </div>
         )}
 
         <div className="space-y-4">
           {loading && (
-            <div className="rounded-xl border bg-white p-4 text-sm text-slate-600 shadow-sm">Carregando…</div>
+            <div className="rounded-2xl border border-white/30 bg-white/60 p-4 text-sm text-slate-700 shadow-sm backdrop-blur">
+              Carregando…
+            </div>
           )}
 
           {!loading && porDisciplina.length === 0 && (
-            <div className="rounded-xl border bg-white p-6 text-sm text-slate-600 shadow-sm">
+            <div className="rounded-2xl border border-white/30 bg-white/60 p-6 text-sm text-slate-700 shadow-sm backdrop-blur">
               Nenhuma linha ainda. Clique em <b>+ Disciplina</b> para começar.
             </div>
           )}
@@ -275,17 +301,15 @@ export default function Home() {
             const r = disciplinaResumo(list);
 
             return (
-              <div key={disciplina} className="rounded-2xl border bg-white shadow-sm">
-                <div className="flex flex-col gap-2 border-b p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div key={disciplina} className="rounded-3xl border border-white/30 bg-white/60 shadow-sm backdrop-blur">
+                <div className="flex flex-col gap-2 border-b border-white/30 p-4 sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    <h2 className="text-lg font-semibold">{disciplina}</h2>
-                    <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600">
+                    <h2 className={`text-lg font-extrabold ${bernNavy}`}>{disciplina}</h2>
+                    <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-700">
                       <span>
                         Soma Máx:{" "}
-                        <b className={r.ok ? "text-emerald-700" : "text-amber-700"}>
-                          {fmt1(r.somaMax)}
-                        </b>{" "}
-                        / {totalEtapa}
+                        <b className={r.ok ? "text-emerald-700" : "text-amber-700"}>{fmt1(r.somaMax)}</b> /{" "}
+                        {totalEtapa}
                       </span>
                       <span>
                         Nota: <b>{fmt1(r.somaNota)}</b>
@@ -298,14 +322,14 @@ export default function Home() {
 
                   <div className="flex flex-wrap gap-2">
                     <button
-                      className="rounded-xl bg-slate-100 px-3 py-2 text-sm hover:bg-slate-200"
+                      className="rounded-2xl bg-white/80 px-3 py-2 text-sm font-semibold text-slate-800 shadow-sm hover:bg-white"
                       onClick={() => addLinha(disciplina)}
                     >
                       + Avaliação
                     </button>
 
                     <button
-                      className="rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-800 hover:bg-emerald-100"
+                      className="rounded-2xl bg-[#e6fffb] px-3 py-2 text-sm font-bold text-[#0f766e] shadow-sm hover:bg-[#ccfbf1]"
                       onClick={() => fecharTotal(disciplina, list)}
                       title="Cria/atualiza uma linha 'Ajuste' para fechar o total"
                     >
@@ -316,8 +340,8 @@ export default function Home() {
 
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
-                    <thead className="bg-slate-50 text-left text-xs text-slate-600">
-                      <tr>
+                    <thead>
+                      <tr className="bg-gradient-to-r from-[#1f2a6a] to-[#14b8a6] text-left text-xs text-white">
                         <th className="px-4 py-3">Avaliação</th>
                         <th className="px-4 py-3">Valor Máx</th>
                         <th className="px-4 py-3 text-center">Média (60%)</th>
@@ -332,14 +356,13 @@ export default function Home() {
                       {list.map((row, idx) => {
                         const isAjuste = row.avaliacao?.toLowerCase() === "ajuste";
 
-                        // valores efetivos (considera buffer enquanto digita)
                         const buf = edit[row.id] || {};
                         const valorMaxEff =
                           buf.valor_max !== undefined ? parsePtNumber(buf.valor_max) ?? 0 : toNum(row.valor_max);
 
                         const notaEff =
                           buf.nota !== undefined
-                            ? parsePtNumber(buf.nota) // pode ser null enquanto digitando
+                            ? parsePtNumber(buf.nota)
                             : row.nota === null || row.nota === undefined
                               ? null
                               : toNum(row.nota);
@@ -382,57 +405,47 @@ export default function Home() {
                           }, 0)
                         );
 
-                        // Regras de vermelho:
-                        // (3) Nota vermelha se abaixo da MÉDIA DA LINHA (e só quando nota existe)
-                        const notaAbaixoDaMediaDaLinha =
-                          notaEff !== null && notaEff + 1e-9 < mediaLinha;
+                        // Nota vermelha se abaixo da média DA LINHA (quando nota existe)
+                        const notaAbaixoDaMediaLinha = notaEff !== null && notaEff + 1e-9 < mediaLinha;
 
-                        // (5) Nota Acum vermelha se abaixo da MÉDIA ACUMULADA (e só quando há algo lançado)
+                        // Nota Acum vermelha se abaixo da média acumulada (quando algo lançado)
                         const notaAcumAbaixoMediaAcum =
                           subsetLancado.length > 0 && notaAcumulada + 1e-9 < mediaAcumulada;
 
                         return (
-                          <tr key={row.id} className="border-t">
+                          <tr key={row.id} className="border-t border-white/30 bg-white/40">
                             <td className="px-4 py-2">
                               <input
                                 className={[
-                                  "w-full rounded-lg border px-2 py-1",
-                                  isAjuste ? "bg-emerald-50" : "bg-white",
+                                  "w-full rounded-lg border px-2 py-1 shadow-sm outline-none",
+                                  isAjuste
+                                    ? "border-[#14b8a6]/50 bg-[#ccfbf1]"
+                                    : "border-white/50 bg-white/70",
+                                  "focus:ring-2 focus:ring-[#14b8a6] focus:border-[#14b8a6]",
                                 ].join(" ")}
                                 value={row.avaliacao || ""}
                                 onChange={(e) => patchLinha(row.id, { avaliacao: e.target.value })}
                               />
                             </td>
 
-                            {/* Valor Máx: estreito, 1 casa, aceita vírgula */}
+                            {/* Valor Máx: mais visível, com fundo teal claro */}
                             <td className="px-4 py-2">
                               <input
                                 type="text"
                                 inputMode="decimal"
-                                className={[
-                                  inputNumBase,
-                                  isAjuste ? "bg-emerald-50" : "bg-white",
-                                ].join(" ")}
-                                value={
-                                  buf.valor_max !== undefined ? buf.valor_max : fmt1(toNum(row.valor_max))
-                                }
+                                className={[inputNum, isAjuste ? "bg-[#ccfbf1]" : ""].join(" ")}
+                                value={buf.valor_max !== undefined ? buf.valor_max : fmt1(toNum(row.valor_max))}
                                 onChange={(e) => {
                                   const v = e.target.value;
-                                  setEdit((prev) => ({
-                                    ...prev,
-                                    [row.id]: { ...prev[row.id], valor_max: v },
-                                  }));
+                                  setEdit((prev) => ({ ...prev, [row.id]: { ...prev[row.id], valor_max: v } }));
                                 }}
                                 onBlur={async () => {
                                   const v = (edit[row.id]?.valor_max ?? "").trim();
                                   if (v === "") {
-                                    // se apagar, zera
                                     await patchLinha(row.id, { valor_max: 0 });
                                   } else {
                                     const parsed = parsePtNumber(v);
-                                    if (parsed !== null) {
-                                      await patchLinha(row.id, { valor_max: parsed });
-                                    }
+                                    if (parsed !== null) await patchLinha(row.id, { valor_max: parsed });
                                   }
                                   setEdit((prev) => {
                                     const next = { ...prev };
@@ -445,20 +458,20 @@ export default function Home() {
 
                             {/* Média (60%) centralizada */}
                             <td className="px-4 py-2 text-center">
-                              <span className="inline-flex rounded-lg bg-slate-100 px-2 py-1 text-xs">
+                              <span className="inline-flex rounded-lg bg-white/70 px-2 py-1 text-xs font-semibold text-slate-800 shadow-sm">
                                 {fmt1(mediaLinha)}
                               </span>
                             </td>
 
-                            {/* Nota: estreita, aceita vírgula, vermelha se abaixo da média da linha */}
+                            {/* Nota */}
                             <td className="px-4 py-2">
                               <input
                                 type="text"
                                 inputMode="decimal"
                                 className={[
-                                  inputNumBase,
-                                  "bg-white",
-                                  notaAbaixoDaMediaDaLinha ? "text-red-600 font-semibold" : "text-slate-900",
+                                  inputNum,
+                                  "bg-[#e6fffb]",
+                                  notaAbaixoDaMediaLinha ? "text-red-600 font-bold" : "text-slate-900",
                                 ].join(" ")}
                                 value={
                                   buf.nota !== undefined
@@ -469,10 +482,7 @@ export default function Home() {
                                 }
                                 onChange={(e) => {
                                   const v = e.target.value;
-                                  setEdit((prev) => ({
-                                    ...prev,
-                                    [row.id]: { ...prev[row.id], nota: v },
-                                  }));
+                                  setEdit((prev) => ({ ...prev, [row.id]: { ...prev[row.id], nota: v } }));
                                 }}
                                 onBlur={async () => {
                                   const v = (edit[row.id]?.nota ?? "").trim();
@@ -480,9 +490,7 @@ export default function Home() {
                                     await patchLinha(row.id, { nota: null });
                                   } else {
                                     const parsed = parsePtNumber(v);
-                                    if (parsed !== null) {
-                                      await patchLinha(row.id, { nota: parsed });
-                                    }
+                                    if (parsed !== null) await patchLinha(row.id, { nota: parsed });
                                   }
                                   setEdit((prev) => {
                                     const next = { ...prev };
@@ -495,17 +503,17 @@ export default function Home() {
 
                             {/* Média Acum centralizada */}
                             <td className="px-4 py-2 text-center">
-                              <span className="inline-flex rounded-lg bg-slate-100 px-2 py-1 text-xs">
+                              <span className="inline-flex rounded-lg bg-white/70 px-2 py-1 text-xs font-semibold text-slate-800 shadow-sm">
                                 {fmt1(mediaAcumulada)}
                               </span>
                             </td>
 
-                            {/* Nota Acum centralizada e vermelha se abaixo da média acumulada */}
+                            {/* Nota Acum centralizada e vermelha se abaixo */}
                             <td className="px-4 py-2 text-center">
                               <span
                                 className={[
-                                  "inline-flex rounded-lg bg-slate-100 px-2 py-1 text-xs",
-                                  notaAcumAbaixoMediaAcum ? "text-red-600 font-semibold" : "text-slate-900",
+                                  "inline-flex rounded-lg bg-white/70 px-2 py-1 text-xs font-semibold shadow-sm",
+                                  notaAcumAbaixoMediaAcum ? "text-red-600" : "text-slate-800",
                                 ].join(" ")}
                               >
                                 {fmt1(notaAcumulada)}
@@ -514,7 +522,7 @@ export default function Home() {
 
                             <td className="px-4 py-2 text-right">
                               <button
-                                className="rounded-lg px-2 py-1 text-xs text-red-700 hover:bg-red-50"
+                                className="rounded-lg px-2 py-1 text-xs font-semibold text-red-700 hover:bg-red-50/80"
                                 onClick={() => delLinha(row.id)}
                               >
                                 Excluir
@@ -528,7 +536,7 @@ export default function Home() {
                 </div>
 
                 {!r.ok && (
-                  <div className="border-t bg-amber-50 p-3 text-xs text-amber-800">
+                  <div className="border-t border-white/30 bg-amber-50/70 p-3 text-xs font-semibold text-amber-900">
                     Esta disciplina não fecha o total da etapa. Clique em <b>Fechar total</b> para criar/ajustar a linha
                     “Ajuste”.
                   </div>
@@ -538,7 +546,7 @@ export default function Home() {
           })}
         </div>
 
-        <footer className="mt-10 text-xs text-slate-500">
+        <footer className="mt-10 rounded-2xl border border-white/30 bg-white/50 p-3 text-xs text-slate-700 shadow-sm backdrop-blur">
           Dica: use “Fechar total” após alterar valores para garantir 30/30/40 por disciplina.
         </footer>
       </div>
