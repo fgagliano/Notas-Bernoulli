@@ -304,7 +304,7 @@ export default function Home() {
                 <div className="flex flex-col gap-2 border-b border-white/30 p-4 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <h2 className={`text-lg font-extrabold ${bernNavy}`}>{disciplina}</h2>
-                    <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-700">
+                    <div className="mt-1 flex flex-col gap-1 text-xs text-slate-700">
   {/* 1) Aviso de "Soma Máx" só enquanto NÃO fechou o total */}
   {!r.ok && (
     <span>
