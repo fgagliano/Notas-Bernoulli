@@ -188,13 +188,20 @@ export default function Home() {
     }
 
     Object.keys(map).forEach((k) => {
-      map[k].sort((a, b) => {
-        const aa = a.avaliacao?.toLowerCase() === "ajuste" ? 1 : 0;
-        const bb = b.avaliacao?.toLowerCase() === "ajuste" ? 1 : 0;
-        if (aa !== bb) return aa - bb;
-        return (a.created_at || "").localeCompare(b.created_at || "");
-      });
+  map[k].sort((a, b) => {
+    // 1️⃣ Ajuste sempre por último
+    const aa = a.avaliacao?.toLowerCase() === "ajuste" ? 1 : 0;
+    const bb = b.avaliacao?.toLowerCase() === "ajuste" ? 1 : 0;
+    if (aa !== bb) return aa - bb;
+
+    // 2️⃣ Ordem alfabética da avaliação (A1, A2, A5, A6...)
+    return (a.avaliacao || "").localeCompare(b.avaliacao || "", "pt-BR", {
+      numeric: true,
+      sensitivity: "base",
     });
+  });
+});
+
 
     return Object.entries(map);
   }, [rows]);
