@@ -458,7 +458,7 @@ export default function Home() {
                       );
 
                       const atingiuMedia = temAlgumaNota && notaLancada >= mediaEtapa - 1e-9;
-                      if (!temAlgumaNota || atingiuMedia) return null;
+                      if (!temAlgumaNota || atingiuMedia || emDisputa <= 0) return null;
 
                       return (
                         <div className="mt-1 flex flex-col gap-1 text-xs text-slate-700">
