@@ -1,6 +1,6 @@
 import { listAlunoAno, upsertAlunoAno, deleteAlunoAno } from "./actions";
 
-const ALUNOS = ["Sofia", "Miguel"] as const;
+const ALUNOS = ["Sofia", "Miguel", "Peu", "Alice"] as const;
 
 export default async function AdminPage() {
   const items = await listAlunoAno();
