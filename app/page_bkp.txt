@@ -45,9 +45,15 @@ function parsePtNumber(s: string): number | null {
 
 type EditBuffer = Record<number, { valor_max?: string; nota?: string }>;
 
+type AlunoAnoRow = { ano: number; serie: string };
+
 export default function Home() {
-  const [ano, setAno] = useState<number>(2025);
+  // ✅ agora o fluxo é: escolhe aluno -> puxa anos daquele aluno -> escolhe ano -> mostra série
   const [aluno, setAluno] = useState<(typeof ALUNOS)[number]>("Sofia");
+  const [anosDisponiveis, setAnosDisponiveis] = useState<number[]>([]);
+  const [ano, setAno] = useState<number>(2025);
+  const [serie, setSerie] = useState<string>("");
+
   const [etapa, setEtapa] = useState<1 | 2 | 3>(1);
 
   const [rows, setRows] = useState<NotaRow[]>([]);
@@ -58,6 +64,73 @@ export default function Home() {
 
   const totalEtapa = ETAPA_TOTAL[etapa];
 
+  // ==============================
+  // Série / Anos disponíveis
+  // ==============================
+  async function carregarAlunoAno(alunoSel: string) {
+    const { data, error } = await supabase
+      .from("aluno_ano")
+      .select("ano, serie")
+      .eq("aluno", alunoSel)
+      .order("ano", { ascending: true });
+
+    if (error) {
+      setMsg(error.message);
+      setAnosDisponiveis([]);
+      setSerie("");
+      return;
+    }
+
+    const list = ((data as AlunoAnoRow[]) || []).map((r) => ({
+      ano: Number((r as any).ano),
+      serie: String((r as any).serie ?? ""),
+    }));
+
+    const anos = list.map((r) => r.ano).filter(Number.isFinite);
+    setAnosDisponiveis(anos);
+
+    // se o ano atual não existe pro aluno, troca pro primeiro disponível
+    let nextAno = ano;
+    if (anos.length > 0 && !anos.includes(ano)) nextAno = anos[0];
+
+    // atualiza ano e série em sequência (evita estado "quebrado")
+    setAno(nextAno);
+    const match = list.find((r) => r.ano === nextAno);
+    setSerie(match?.serie ?? "");
+  }
+
+  async function carregarSerie(alunoSel: string, anoSel: number) {
+    const { data, error } = await supabase
+      .from("aluno_ano")
+      .select("serie")
+      .eq("aluno", alunoSel)
+      .eq("ano", anoSel)
+      .maybeSingle();
+
+    if (error) {
+      setMsg(error.message);
+      setSerie("");
+      return;
+    }
+
+    setSerie(String((data as any)?.serie ?? ""));
+  }
+
+  // quando mudar o aluno, recalcula anos e série
+  useEffect(() => {
+    carregarAlunoAno(aluno);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [aluno]);
+
+  // quando mudar o ano, atualiza a série (anos já vêm do aluno)
+  useEffect(() => {
+    carregarSerie(aluno, ano);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ano]);
+
+  // ==============================
+  // Notas
+  // ==============================
   async function carregar() {
     setLoading(true);
     setMsg("");
@@ -214,22 +287,12 @@ export default function Home() {
               <h1 className={`text-2xl font-extrabold tracking-tight ${bernNavy}`}>Notas</h1>
               <span className={`text-sm font-semibold ${bernTeal}`}>Bernoulli</span>
             </div>
-
+            <div className="mt-1 text-xs text-slate-700">
+              {aluno} · {ano} · Série: <b>{serie || "—"}</b>
+            </div>
           </div>
 
           <div className="flex flex-wrap gap-2">
-            <div className="rounded-2xl border border-white/30 bg-white/60 p-3 shadow-sm backdrop-blur">
-              <div className="text-xs font-semibold text-slate-700">Ano</div>
-              <select
-                className={`mt-1 w-28 rounded-lg border border-[#2dd4bf]/50 bg-white/80 px-2 py-1 text-sm shadow-sm outline-none ${focusRing}`}
-                value={ano}
-                onChange={(e) => setAno(Number(e.target.value))}
-              >
-                <option value={2025}>2025</option>
-                <option value={2026}>2026</option>
-              </select>
-            </div>
-
             <div className="rounded-2xl border border-white/30 bg-white/60 p-3 shadow-sm backdrop-blur">
               <div className="text-xs font-semibold text-slate-700">Aluno</div>
               <select
@@ -246,6 +309,33 @@ export default function Home() {
             </div>
 
             <div className="rounded-2xl border border-white/30 bg-white/60 p-3 shadow-sm backdrop-blur">
+              <div className="text-xs font-semibold text-slate-700">Ano</div>
+              <select
+                className={`mt-1 w-28 rounded-lg border border-[#2dd4bf]/50 bg-white/80 px-2 py-1 text-sm shadow-sm outline-none ${focusRing}`}
+                value={ano}
+                onChange={(e) => setAno(Number(e.target.value))}
+              >
+                {anosDisponiveis.length > 0 ? (
+                  anosDisponiveis.map((y) => (
+                    <option key={y} value={y}>
+                      {y}
+                    </option>
+                  ))
+                ) : (
+                  <>
+                    <option value={2025}>2025</option>
+                    <option value={2026}>2026</option>
+                  </>
+                )}
+              </select>
+              {anosDisponiveis.length === 0 && (
+                <div className="mt-1 text-[11px] text-amber-700">
+                  Nenhum ano cadastrado em <b>/admin</b> para {aluno}.
+                </div>
+              )}
+            </div>
+
+            <div className="rounded-2xl border border-white/30 bg-white/60 p-3 shadow-sm backdrop-blur">
               <div className="text-xs font-semibold text-slate-700">Etapa</div>
               <div className="mt-1 flex gap-1">
                 {[1, 2, 3].map((n) => (
@@ -253,9 +343,7 @@ export default function Home() {
                     key={n}
                     className={[
                       "rounded-lg px-3 py-1 text-sm font-semibold shadow-sm",
-                      etapa === n
-                        ? "bg-[#1f2a6a] text-white"
-                        : "bg-white/80 text-slate-800 hover:bg-white",
+                      etapa === n ? "bg-[#1f2a6a] text-white" : "bg-white/80 text-slate-800 hover:bg-white",
                     ].join(" ")}
                     onClick={() => setEtapa(n as any)}
                   >
@@ -305,56 +393,45 @@ export default function Home() {
                   <div>
                     <h2 className={`text-lg font-extrabold ${bernNavy}`}>{disciplina}</h2>
                     <div className="mt-1 flex flex-col gap-1 text-xs text-slate-700">
-  {/* 1) Aviso de "Soma Máx" só enquanto NÃO fechou o total */}
-  {!r.ok && (
-    <span>
-      Soma Máx:{" "}
-      <b className="text-amber-700">{fmt1(r.somaMax)}</b> / {totalEtapa}{" "}
-      <span className="text-slate-500">(complete os valores)</span>
-    </span>
-  )}
+                      {!r.ok && (
+                        <span>
+                          Soma Máx: <b className="text-amber-700">{fmt1(r.somaMax)}</b> / {totalEtapa}{" "}
+                          <span className="text-slate-500">(complete os valores)</span>
+                        </span>
+                      )}
 
-  {/* 2) Progresso em relação à média da etapa (só se houver nota lançada) */}
-  {(() => {
-    // nota acumulada "real": soma das notas lançadas (ignora null)
-    const notaLancada = list.reduce((acc, rr) => acc + (rr.nota ?? 0), 0);
-    const temAlgumaNota = list.some((rr) => rr.nota !== null && rr.nota !== undefined);
+                      {(() => {
+                        const notaLancada = list.reduce((acc, rr) => acc + (rr.nota ?? 0), 0);
+                        const temAlgumaNota = list.some((rr) => rr.nota !== null && rr.nota !== undefined);
 
-    const mediaEtapa = totalEtapa * 0.6;
+                        const mediaEtapa = totalEtapa * 0.6;
+                        const faltam = Math.max(0, mediaEtapa - notaLancada);
 
-    // quanto falta para atingir a média
-    const faltam = Math.max(0, mediaEtapa - notaLancada);
+                        const emDisputa = round1(
+                          list
+                            .filter((rr) => {
+                              const semNota = rr.nota === null || rr.nota === undefined;
+                              const isAjuste = (rr.avaliacao || "").toLowerCase() === "ajuste";
+                              return semNota && !isAjuste;
+                            })
+                            .reduce((acc, rr) => acc + toNum(rr.valor_max), 0)
+                        );
 
-    // ainda há pontos "em disputa": soma do valor_max das avaliações SEM nota lançada
-const emDisputa = round1(
-  list
-    .filter((rr) => {
-      const semNota = rr.nota === null || rr.nota === undefined;
-      const isAjuste = (rr.avaliacao || "").toLowerCase() === "ajuste";
-      return semNota && !isAjuste; // não conta "Ajuste" como disputa
-    })
-    .reduce((acc, rr) => acc + toNum(rr.valor_max), 0)
-);
+                        const atingiuMedia = temAlgumaNota && notaLancada >= mediaEtapa - 1e-9;
+                        if (!temAlgumaNota || atingiuMedia) return null;
 
-
-    // se já atingiu a média, some tudo
-    const atingiuMedia = temAlgumaNota && notaLancada >= mediaEtapa - 1e-9;
-
-    if (!temAlgumaNota || atingiuMedia) return null;
-
-    return (
-      <>
-        <span>
-          Faltam <b className="text-[#1f2a6a]">{fmt1(faltam)}</b> pontos para atingir a média da etapa.
-        </span>
-        <span>
-          Ainda há <b className="text-[#1f2a6a]">{fmt1(emDisputa)}</b> pontos em disputa.
-        </span>
-      </>
-    );
-  })()}
-</div>
-
+                        return (
+                          <>
+                            <span>
+                              Faltam <b className="text-[#1f2a6a]">{fmt1(faltam)}</b> pontos para atingir a média da etapa.
+                            </span>
+                            <span>
+                              Ainda há <b className="text-[#1f2a6a]">{fmt1(emDisputa)}</b> pontos em disputa.
+                            </span>
+                          </>
+                        );
+                      })()}
+                    </div>
                   </div>
 
                   <div className="flex flex-wrap gap-2">
@@ -445,18 +522,13 @@ const emDisputa = round1(
                         const notaAcumAbaixoMediaAcum =
                           subsetLancado.length > 0 && notaAcumulada + 1e-9 < mediaAcumulada;
 
-                        // ✅ REGRA NOVA:
-                        // Só exibe Média Acum / Nota Acum se a LINHA atual tem nota lançada.
                         const notaDaLinhaExiste = notaEff !== null;
 
                         return (
                           <tr key={row.id} className="border-t border-white/30 bg-white/40">
                             <td className={td}>
                               <input
-                                className={[
-                                  inputAvaliacao,
-                                  isAjuste ? "border-[#14b8a6]/50 bg-[#ccfbf1]" : "",
-                                ].join(" ")}
+                                className={[inputAvaliacao, isAjuste ? "border-[#14b8a6]/50 bg-[#ccfbf1]" : ""].join(" ")}
                                 value={row.avaliacao || ""}
                                 onChange={(e) => patchLinha(row.id, { avaliacao: e.target.value })}
                               />
@@ -473,24 +545,22 @@ const emDisputa = round1(
                                   setEdit((prev) => ({ ...prev, [row.id]: { ...prev[row.id], valor_max: v } }));
                                 }}
                                 onBlur={async () => {
-  // ✅ se não houve edição, não salva nada
-  if (edit[row.id]?.valor_max === undefined) return;
+                                  if (edit[row.id]?.valor_max === undefined) return;
 
-  const v = (edit[row.id]?.valor_max ?? "").trim();
-  if (v === "") {
-    await patchLinha(row.id, { valor_max: 0 });
-  } else {
-    const parsed = parsePtNumber(v);
-    if (parsed !== null) await patchLinha(row.id, { valor_max: parsed });
-  }
+                                  const v = (edit[row.id]?.valor_max ?? "").trim();
+                                  if (v === "") {
+                                    await patchLinha(row.id, { valor_max: 0 });
+                                  } else {
+                                    const parsed = parsePtNumber(v);
+                                    if (parsed !== null) await patchLinha(row.id, { valor_max: parsed });
+                                  }
 
-  setEdit((prev) => {
-    const next = { ...prev };
-    if (next[row.id]) delete next[row.id].valor_max;
-    return next;
-  });
-}}
-
+                                  setEdit((prev) => {
+                                    const next = { ...prev };
+                                    if (next[row.id]) delete next[row.id].valor_max;
+                                    return next;
+                                  });
+                                }}
                               />
                             </td>
 
@@ -521,28 +591,25 @@ const emDisputa = round1(
                                   setEdit((prev) => ({ ...prev, [row.id]: { ...prev[row.id], nota: v } }));
                                 }}
                                 onBlur={async () => {
-  // ✅ se não houve edição, não salva nada
-  if (edit[row.id]?.nota === undefined) return;
+                                  if (edit[row.id]?.nota === undefined) return;
 
-  const v = (edit[row.id]?.nota ?? "").trim();
-  if (v === "") {
-    await patchLinha(row.id, { nota: null });
-  } else {
-    const parsed = parsePtNumber(v);
-    if (parsed !== null) await patchLinha(row.id, { nota: parsed });
-  }
+                                  const v = (edit[row.id]?.nota ?? "").trim();
+                                  if (v === "") {
+                                    await patchLinha(row.id, { nota: null });
+                                  } else {
+                                    const parsed = parsePtNumber(v);
+                                    if (parsed !== null) await patchLinha(row.id, { nota: parsed });
+                                  }
 
-  setEdit((prev) => {
-    const next = { ...prev };
-    if (next[row.id]) delete next[row.id].nota;
-    return next;
-  });
-}}
-
+                                  setEdit((prev) => {
+                                    const next = { ...prev };
+                                    if (next[row.id]) delete next[row.id].nota;
+                                    return next;
+                                  });
+                                }}
                               />
                             </td>
 
-                            {/* ✅ Média Acum: só aparece se a linha tem nota */}
                             <td className={`${td} text-center`}>
                               {notaDaLinhaExiste ? (
                                 <span className="inline-flex rounded-lg bg-white/70 px-2 py-1 text-xs font-semibold text-slate-800 shadow-sm">
@@ -553,7 +620,6 @@ const emDisputa = round1(
                               )}
                             </td>
 
-                            {/* ✅ Nota Acum: só aparece se a linha tem nota */}
                             <td className={`${td} text-center`}>
                               {notaDaLinhaExiste ? (
                                 <span
@@ -586,8 +652,7 @@ const emDisputa = round1(
 
                 {!r.ok && (
                   <div className="border-t border-white/30 bg-amber-50/70 p-3 text-xs font-semibold text-amber-900">
-                    Esta disciplina não fecha o total da etapa. Clique em <b>Fechar total</b> para criar/ajustar a linha
-                    “Ajuste”.
+                    Esta disciplina não fecha o total da etapa. Clique em <b>Fechar total</b> para criar/ajustar a linha “Ajuste”.
                   </div>
                 )}
               </div>
