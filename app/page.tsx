@@ -38,14 +38,23 @@ function fmt1(n: number) {
   return round1(n).toFixed(1);
 }
 
-/** aceita "8,5" ou "8.5" ou "8" */
 function parsePtNumber(s: string): number | null {
   const t = (s ?? "").trim();
   if (t === "") return null;
-  const normalized = t.replace(/\./g, "").replace(",", ".");
-  const n = Number(normalized);
+
+  // Se tem vírgula, assumimos pt-BR: "." é milhar e "," é decimal
+  if (t.includes(",")) {
+    const normalized = t.replace(/\./g, "").replace(",", ".");
+    const n = Number(normalized);
+    return Number.isFinite(n) ? n : null;
+  }
+
+  // Se NÃO tem vírgula, assumimos formato com ponto decimal (ex: 7.7)
+  // Não remove pontos.
+  const n = Number(t);
   return Number.isFinite(n) ? n : null;
 }
+
 
 type EditBuffer = Record<number, { valor_max?: string; nota?: string }>;
 
