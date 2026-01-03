@@ -12,6 +12,7 @@ type NotaRow = {
   avaliacao: string;
   valor_max: number;
   nota: number | null;
+  ordem?: number | null;
   created_at?: string;
 };
 
@@ -97,19 +98,22 @@ export default function Home() {
     const alunoAtual = alunos.includes(aluno) ? aluno : alunos[0];
 
     if (alunoAtual) {
-      setAluno(alunoAtual);
+      const anosDoAluno = Array.from(
+        new Set(list.filter((x) => x.aluno === alunoAtual).map((x) => x.ano))
+      ).sort((a, b) => b - a);
 
-      const anosDoAluno = list.filter((x) => x.aluno === alunoAtual).map((x) => x.ano);
       const anoAtual = anosDoAluno.includes(ano) ? ano : anosDoAluno[0];
 
+      setAluno(alunoAtual);
       if (Number.isFinite(anoAtual)) setAno(anoAtual);
 
-      const v = list.find((x) => x.aluno === alunoAtual && x.ano === (Number.isFinite(anoAtual) ? anoAtual : ano));
+      const v = list.find((x) => x.aluno === alunoAtual && x.ano === anoAtual);
       setSerie(v?.serie ?? "");
     } else {
       setAluno("");
-      setAno(new Date().getFullYear());
       setSerie("");
+      // não inventa ano "do nada" se não há vínculos
+      setRows([]);
     }
   }
 
@@ -124,7 +128,8 @@ export default function Home() {
   }, [vinculos]);
 
   const anosDisponiveis = useMemo(() => {
-    return vinculos.filter((x) => x.aluno === aluno).map((x) => x.ano);
+    const anos = vinculos.filter((x) => x.aluno === aluno).map((x) => x.ano);
+    return Array.from(new Set(anos)).sort((a, b) => b - a);
   }, [vinculos, aluno]);
 
   useEffect(() => {
@@ -152,6 +157,8 @@ export default function Home() {
       .eq("aluno", aluno)
       .eq("etapa", etapa)
       .order("disciplina", { ascending: true })
+      // ✅ se existir, mantém a mesma ordem do Excel/etapa anterior
+      .order("ordem", { ascending: true, nullsFirst: false })
       .order("created_at", { ascending: true });
 
     setLoading(false);
@@ -183,7 +190,19 @@ export default function Home() {
         const aa = a.avaliacao?.toLowerCase() === "ajuste" ? 1 : 0;
         const bb = b.avaliacao?.toLowerCase() === "ajuste" ? 1 : 0;
         if (aa !== bb) return aa - bb;
-        return (a.created_at || "").localeCompare(b.created_at || "");
+
+        // ✅ prioridade: ordem
+        const oa = a.ordem ?? 999999;
+        const ob = b.ordem ?? 999999;
+        if (oa !== ob) return oa - ob;
+
+        // fallback
+        const ca = a.created_at || "";
+        const cb = b.created_at || "";
+        const c = ca.localeCompare(cb);
+        if (c !== 0) return c;
+
+        return (a.id ?? 0) - (b.id ?? 0);
       });
     });
 
@@ -200,6 +219,8 @@ export default function Home() {
       avaliacao: "Nova avaliação",
       valor_max: 0,
       nota: null,
+      // opcional: coloca no final (ordem alta)
+      ordem: 999999,
     });
 
     if (error) return setMsg(error.message);
@@ -216,7 +237,7 @@ export default function Home() {
   async function patchLinha(id: number, patch: Partial<NotaRow>) {
     setMsg("");
     const { error } = await supabase.from("notas").update(patch).eq("id", id);
-    if (error) return setMsg(error.message);
+    if (error) throw new Error(error.message);
     setRows((prev) => prev.map((r) => (r.id === id ? ({ ...r, ...patch } as NotaRow) : r)));
   }
 
@@ -253,6 +274,7 @@ export default function Home() {
         avaliacao: "Ajuste",
         valor_max: diff,
         nota: null,
+        ordem: 999999,
       });
       if (error) return setMsg(error.message);
     }
@@ -317,7 +339,10 @@ export default function Home() {
                   const novoAluno = e.target.value;
                   setAluno(novoAluno);
 
-                  const anos = vinculos.filter((x) => x.aluno === novoAluno).map((x) => x.ano);
+                  const anos = Array.from(
+                    new Set(vinculos.filter((x) => x.aluno === novoAluno).map((x) => x.ano))
+                  ).sort((a, b) => b - a);
+
                   const novoAno = anos[0];
                   if (Number.isFinite(novoAno)) setAno(novoAno);
 
@@ -645,7 +670,8 @@ export default function Home() {
 
                 {!r.ok && (
                   <div className="border-t border-white/30 bg-amber-50/70 p-3 text-xs font-semibold text-amber-900">
-                    Esta disciplina não fecha o total da etapa. Clique em <b>Fechar total</b> para criar/ajustar a linha “Ajuste”.
+                    Esta disciplina não fecha o total da etapa. Clique em <b>Fechar total</b> para criar/ajustar a linha
+                    “Ajuste”.
                   </div>
                 )}
               </div>
