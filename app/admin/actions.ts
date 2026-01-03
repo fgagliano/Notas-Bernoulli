@@ -1,10 +1,19 @@
 "use server";
 
 import { createClient } from "@supabase/supabase-js";
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 
 function sbAdmin() {
-  const url = process.env.SUPABASE_URL!;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!url || !key) {
+    throw new Error(
+      "Variáveis do Supabase ausentes: SUPABASE_URL e/ou SUPABASE_SERVICE_ROLE_KEY."
+    );
+  }
+
   return createClient(url, key, { auth: { persistSession: false } });
 }
 
@@ -33,6 +42,9 @@ export async function upsertAlunoAno(formData: FormData) {
     .upsert({ aluno, ano, serie }, { onConflict: "aluno,ano" });
 
   if (error) throw new Error(error.message);
+
+  revalidatePath("/admin");
+  redirect("/admin?ok=1");
 }
 
 export async function deleteAlunoAno(formData: FormData) {
@@ -46,8 +58,16 @@ export async function deleteAlunoAno(formData: FormData) {
   }
 
   const supabase = sbAdmin();
-  const { error } = await supabase.from("aluno_ano").delete().eq("aluno", aluno).eq("ano", ano);
+  const { error } = await supabase
+    .from("aluno_ano")
+    .delete()
+    .eq("aluno", aluno)
+    .eq("ano", ano);
+
   if (error) throw new Error(error.message);
+
+  revalidatePath("/admin");
+  redirect("/admin?del=1");
 }
 
 export async function listAlunoAno() {
