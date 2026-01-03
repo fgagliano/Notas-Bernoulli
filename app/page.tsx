@@ -473,19 +473,24 @@ const emDisputa = round1(
                                   setEdit((prev) => ({ ...prev, [row.id]: { ...prev[row.id], valor_max: v } }));
                                 }}
                                 onBlur={async () => {
-                                  const v = (edit[row.id]?.valor_max ?? "").trim();
-                                  if (v === "") {
-                                    await patchLinha(row.id, { valor_max: 0 });
-                                  } else {
-                                    const parsed = parsePtNumber(v);
-                                    if (parsed !== null) await patchLinha(row.id, { valor_max: parsed });
-                                  }
-                                  setEdit((prev) => {
-                                    const next = { ...prev };
-                                    if (next[row.id]) delete next[row.id].valor_max;
-                                    return next;
-                                  });
-                                }}
+  // ✅ se não houve edição, não salva nada
+  if (edit[row.id]?.valor_max === undefined) return;
+
+  const v = (edit[row.id]?.valor_max ?? "").trim();
+  if (v === "") {
+    await patchLinha(row.id, { valor_max: 0 });
+  } else {
+    const parsed = parsePtNumber(v);
+    if (parsed !== null) await patchLinha(row.id, { valor_max: parsed });
+  }
+
+  setEdit((prev) => {
+    const next = { ...prev };
+    if (next[row.id]) delete next[row.id].valor_max;
+    return next;
+  });
+}}
+
                               />
                             </td>
 
@@ -516,19 +521,24 @@ const emDisputa = round1(
                                   setEdit((prev) => ({ ...prev, [row.id]: { ...prev[row.id], nota: v } }));
                                 }}
                                 onBlur={async () => {
-                                  const v = (edit[row.id]?.nota ?? "").trim();
-                                  if (v === "") {
-                                    await patchLinha(row.id, { nota: null });
-                                  } else {
-                                    const parsed = parsePtNumber(v);
-                                    if (parsed !== null) await patchLinha(row.id, { nota: parsed });
-                                  }
-                                  setEdit((prev) => {
-                                    const next = { ...prev };
-                                    if (next[row.id]) delete next[row.id].nota;
-                                    return next;
-                                  });
-                                }}
+  // ✅ se não houve edição, não salva nada
+  if (edit[row.id]?.nota === undefined) return;
+
+  const v = (edit[row.id]?.nota ?? "").trim();
+  if (v === "") {
+    await patchLinha(row.id, { nota: null });
+  } else {
+    const parsed = parsePtNumber(v);
+    if (parsed !== null) await patchLinha(row.id, { nota: parsed });
+  }
+
+  setEdit((prev) => {
+    const next = { ...prev };
+    if (next[row.id]) delete next[row.id].nota;
+    return next;
+  });
+}}
+
                               />
                             </td>
 
