@@ -191,13 +191,11 @@ export default function Home() {
   const bernNavy = "text-[#1f2a6a]";
   const focusRing = "focus:ring-2 focus:ring-[#14b8a6] focus:border-[#14b8a6]";
 
-  // Padding responsivo para células
   const td = "px-2 sm:px-4 py-2";
 
-  // Inputs numéricos responsivos (MOBILE bem estreito)
   const inputNum =
     "w-14 sm:w-20 md:w-24 text-right rounded-lg border border-[#2dd4bf]/60 bg-[#e6fffb] " +
-    "px-2 py-1 text-slate-900 placeholder:text-slate-500 shadow-sm outline-none " +
+    "px-2 py-1 placeholder:text-slate-500 shadow-sm outline-none " +
     focusRing;
 
   const inputAvaliacao =
@@ -206,7 +204,6 @@ export default function Home() {
 
   return (
     <div className="min-h-screen text-slate-900">
-      {/* Fundo estilo Bernoulli */}
       <div className="absolute inset-0 -z-10 bg-gradient-to-r from-[#c9f7f1] via-[#bfeff2] to-[#88dfd7]" />
       <div className="absolute inset-0 -z-10 opacity-40 [background-image:radial-gradient(circle_at_1px_1px,rgba(107,114,128,0.25)_1px,transparent_0)] [background-size:22px_22px]" />
 
@@ -217,9 +214,7 @@ export default function Home() {
               <h1 className={`text-2xl font-extrabold tracking-tight ${bernNavy}`}>Notas</h1>
               <span className={`text-sm font-semibold ${bernTeal}`}>Bernoulli</span>
             </div>
-            <p className="mt-1 text-sm text-slate-700">
-              Etapas: <b>30</b>, <b>30</b>, <b>40</b>. Cada disciplina deve fechar o total da etapa.
-            </p>
+
           </div>
 
           <div className="flex flex-wrap gap-2">
@@ -309,19 +304,57 @@ export default function Home() {
                 <div className="flex flex-col gap-2 border-b border-white/30 p-4 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <h2 className={`text-lg font-extrabold ${bernNavy}`}>{disciplina}</h2>
-                    <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-700">
-                      <span>
-                        Soma Máx:{" "}
-                        <b className={r.ok ? "text-emerald-700" : "text-amber-700"}>{fmt1(r.somaMax)}</b> /{" "}
-                        {totalEtapa}
-                      </span>
-                      <span>
-                        Nota: <b>{fmt1(r.somaNota)}</b>
-                      </span>
-                      <span>
-                        Média (60%): <b>{fmt1(r.somaMedia60)}</b>
-                      </span>
-                    </div>
+                    <div className="mt-1 flex flex-col gap-1 text-xs text-slate-700">
+  {/* 1) Aviso de "Soma Máx" só enquanto NÃO fechou o total */}
+  {!r.ok && (
+    <span>
+      Soma Máx:{" "}
+      <b className="text-amber-700">{fmt1(r.somaMax)}</b> / {totalEtapa}{" "}
+      <span className="text-slate-500">(complete os valores)</span>
+    </span>
+  )}
+
+  {/* 2) Progresso em relação à média da etapa (só se houver nota lançada) */}
+  {(() => {
+    // nota acumulada "real": soma das notas lançadas (ignora null)
+    const notaLancada = list.reduce((acc, rr) => acc + (rr.nota ?? 0), 0);
+    const temAlgumaNota = list.some((rr) => rr.nota !== null && rr.nota !== undefined);
+
+    const mediaEtapa = totalEtapa * 0.6;
+
+    // quanto falta para atingir a média
+    const faltam = Math.max(0, mediaEtapa - notaLancada);
+
+    // ainda há pontos "em disputa": soma do valor_max das avaliações SEM nota lançada
+const emDisputa = round1(
+  list
+    .filter((rr) => {
+      const semNota = rr.nota === null || rr.nota === undefined;
+      const isAjuste = (rr.avaliacao || "").toLowerCase() === "ajuste";
+      return semNota && !isAjuste; // não conta "Ajuste" como disputa
+    })
+    .reduce((acc, rr) => acc + toNum(rr.valor_max), 0)
+);
+
+
+    // se já atingiu a média, some tudo
+    const atingiuMedia = temAlgumaNota && notaLancada >= mediaEtapa - 1e-9;
+
+    if (!temAlgumaNota || atingiuMedia) return null;
+
+    return (
+      <>
+        <span>
+          Faltam <b className="text-[#1f2a6a]">{fmt1(faltam)}</b> pontos para atingir a média da etapa.
+        </span>
+        <span>
+          Ainda há <b className="text-[#1f2a6a]">{fmt1(emDisputa)}</b> pontos em disputa.
+        </span>
+      </>
+    );
+  })()}
+</div>
+
                   </div>
 
                   <div className="flex flex-wrap gap-2">
@@ -412,6 +445,10 @@ export default function Home() {
                         const notaAcumAbaixoMediaAcum =
                           subsetLancado.length > 0 && notaAcumulada + 1e-9 < mediaAcumulada;
 
+                        // ✅ REGRA NOVA:
+                        // Só exibe Média Acum / Nota Acum se a LINHA atual tem nota lançada.
+                        const notaDaLinhaExiste = notaEff !== null;
+
                         return (
                           <tr key={row.id} className="border-t border-white/30 bg-white/40">
                             <td className={td}>
@@ -436,19 +473,24 @@ export default function Home() {
                                   setEdit((prev) => ({ ...prev, [row.id]: { ...prev[row.id], valor_max: v } }));
                                 }}
                                 onBlur={async () => {
-                                  const v = (edit[row.id]?.valor_max ?? "").trim();
-                                  if (v === "") {
-                                    await patchLinha(row.id, { valor_max: 0 });
-                                  } else {
-                                    const parsed = parsePtNumber(v);
-                                    if (parsed !== null) await patchLinha(row.id, { valor_max: parsed });
-                                  }
-                                  setEdit((prev) => {
-                                    const next = { ...prev };
-                                    if (next[row.id]) delete next[row.id].valor_max;
-                                    return next;
-                                  });
-                                }}
+  // ✅ se não houve edição, não salva nada
+  if (edit[row.id]?.valor_max === undefined) return;
+
+  const v = (edit[row.id]?.valor_max ?? "").trim();
+  if (v === "") {
+    await patchLinha(row.id, { valor_max: 0 });
+  } else {
+    const parsed = parsePtNumber(v);
+    if (parsed !== null) await patchLinha(row.id, { valor_max: parsed });
+  }
+
+  setEdit((prev) => {
+    const next = { ...prev };
+    if (next[row.id]) delete next[row.id].valor_max;
+    return next;
+  });
+}}
+
                               />
                             </td>
 
@@ -465,7 +507,7 @@ export default function Home() {
                                 className={[
                                   inputNum,
                                   "bg-[#e6fffb]",
-                                  notaAbaixoDaMediaLinha ? "text-red-600 font-bold" : "text-slate-900",
+                                  notaAbaixoDaMediaLinha ? "text-red-600" : "text-slate-900",
                                 ].join(" ")}
                                 value={
                                   buf.nota !== undefined
@@ -479,37 +521,52 @@ export default function Home() {
                                   setEdit((prev) => ({ ...prev, [row.id]: { ...prev[row.id], nota: v } }));
                                 }}
                                 onBlur={async () => {
-                                  const v = (edit[row.id]?.nota ?? "").trim();
-                                  if (v === "") {
-                                    await patchLinha(row.id, { nota: null });
-                                  } else {
-                                    const parsed = parsePtNumber(v);
-                                    if (parsed !== null) await patchLinha(row.id, { nota: parsed });
-                                  }
-                                  setEdit((prev) => {
-                                    const next = { ...prev };
-                                    if (next[row.id]) delete next[row.id].nota;
-                                    return next;
-                                  });
-                                }}
+  // ✅ se não houve edição, não salva nada
+  if (edit[row.id]?.nota === undefined) return;
+
+  const v = (edit[row.id]?.nota ?? "").trim();
+  if (v === "") {
+    await patchLinha(row.id, { nota: null });
+  } else {
+    const parsed = parsePtNumber(v);
+    if (parsed !== null) await patchLinha(row.id, { nota: parsed });
+  }
+
+  setEdit((prev) => {
+    const next = { ...prev };
+    if (next[row.id]) delete next[row.id].nota;
+    return next;
+  });
+}}
+
                               />
                             </td>
 
+                            {/* ✅ Média Acum: só aparece se a linha tem nota */}
                             <td className={`${td} text-center`}>
-                              <span className="inline-flex rounded-lg bg-white/70 px-2 py-1 text-xs font-semibold text-slate-800 shadow-sm">
-                                {fmt1(mediaAcumulada)}
-                              </span>
+                              {notaDaLinhaExiste ? (
+                                <span className="inline-flex rounded-lg bg-white/70 px-2 py-1 text-xs font-semibold text-slate-800 shadow-sm">
+                                  {fmt1(mediaAcumulada)}
+                                </span>
+                              ) : (
+                                <span className="text-transparent select-none">.</span>
+                              )}
                             </td>
 
+                            {/* ✅ Nota Acum: só aparece se a linha tem nota */}
                             <td className={`${td} text-center`}>
-                              <span
-                                className={[
-                                  "inline-flex rounded-lg bg-white/70 px-2 py-1 text-xs font-semibold shadow-sm",
-                                  notaAcumAbaixoMediaAcum ? "text-red-600" : "text-slate-800",
-                                ].join(" ")}
-                              >
-                                {fmt1(notaAcumulada)}
-                              </span>
+                              {notaDaLinhaExiste ? (
+                                <span
+                                  className={[
+                                    "inline-flex rounded-lg bg-white/70 px-2 py-1 text-xs font-semibold shadow-sm",
+                                    notaAcumAbaixoMediaAcum ? "text-red-600" : "text-slate-800",
+                                  ].join(" ")}
+                                >
+                                  {fmt1(notaAcumulada)}
+                                </span>
+                              ) : (
+                                <span className="text-transparent select-none">.</span>
+                              )}
                             </td>
 
                             <td className={`${td} text-right`}>
