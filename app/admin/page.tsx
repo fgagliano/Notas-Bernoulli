@@ -2,8 +2,16 @@ import { listAlunoAno, upsertAlunoAno, deleteAlunoAno } from "./actions";
 
 const ALUNOS = ["Sofia", "Miguel", "Peu", "Alice"] as const;
 
-export default async function AdminPage() {
+export default async function AdminPage({
+  searchParams,
+}: {
+  searchParams?: { ok?: string; del?: string; err?: string };
+}) {
   const items = await listAlunoAno();
+
+  const ok = searchParams?.ok === "1";
+  const del = searchParams?.del === "1";
+  const err = searchParams?.err ? decodeURIComponent(searchParams.err) : "";
 
   return (
     <div className="min-h-screen bg-gradient-to-r from-[#c9f7f1] via-[#bfeff2] to-[#88dfd7] p-4 sm:p-6 text-slate-900">
@@ -13,6 +21,26 @@ export default async function AdminPage() {
           <p className="mt-1 text-sm text-slate-700">
             Vincule <b>Aluno + Ano → Série</b> (ex.: Miguel + 2025 → 8EF). Isso evita erro na tabela de notas.
           </p>
+
+          {/* ✅ MENSAGENS */}
+          {(ok || del || err) && (
+            <div
+              className={[
+                "mt-4 rounded-2xl border p-3 text-sm shadow-sm",
+                err
+                  ? "border-red-200 bg-red-50/70 text-red-800"
+                  : "border-emerald-200 bg-emerald-50/70 text-emerald-800",
+              ].join(" ")}
+            >
+              {err ? (
+                <div className="font-semibold">{err}</div>
+              ) : ok ? (
+                <div className="font-semibold">Vínculo salvo com sucesso.</div>
+              ) : (
+                <div className="font-semibold">Vínculo excluído com sucesso.</div>
+              )}
+            </div>
+          )}
 
           <div className="mt-4 grid gap-3">
             <form action={upsertAlunoAno} className="grid gap-3 rounded-2xl bg-white/50 p-4">
@@ -54,12 +82,14 @@ export default async function AdminPage() {
               </div>
 
               <label className="text-sm">
-                <div className="text-xs font-semibold text-slate-700">Código de admin</div>
+                <div className="text-xs font-semibold text-slate-700">
+                  Código de admin <span className="text-red-600">*</span>
+                </div>
                 <input
                   name="admin_secret"
                   type="password"
                   className="mt-1 w-full rounded-lg border border-[#2dd4bf]/50 bg-white/80 px-2 py-2 outline-none focus:ring-2 focus:ring-[#14b8a6]"
-                  placeholder="(o mesmo que você colocou em ADMIN_SECRET)"
+                  placeholder="obrigatório para salvar ou excluir"
                 />
               </label>
 
