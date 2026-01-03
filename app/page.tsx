@@ -12,7 +12,6 @@ type NotaRow = {
   avaliacao: string;
   valor_max: number;
   nota: number | null;
-  ordem?: number | null;
   created_at?: string;
 };
 
@@ -98,22 +97,19 @@ export default function Home() {
     const alunoAtual = alunos.includes(aluno) ? aluno : alunos[0];
 
     if (alunoAtual) {
-      const anosDoAluno = Array.from(
-        new Set(list.filter((x) => x.aluno === alunoAtual).map((x) => x.ano))
-      ).sort((a, b) => b - a);
+      setAluno(alunoAtual);
 
+      const anosDoAluno = list.filter((x) => x.aluno === alunoAtual).map((x) => x.ano);
       const anoAtual = anosDoAluno.includes(ano) ? ano : anosDoAluno[0];
 
-      setAluno(alunoAtual);
       if (Number.isFinite(anoAtual)) setAno(anoAtual);
 
-      const v = list.find((x) => x.aluno === alunoAtual && x.ano === anoAtual);
+      const v = list.find((x) => x.aluno === alunoAtual && x.ano === (Number.isFinite(anoAtual) ? anoAtual : ano));
       setSerie(v?.serie ?? "");
     } else {
       setAluno("");
+      setAno(new Date().getFullYear());
       setSerie("");
-      // não inventa ano "do nada" se não há vínculos
-      setRows([]);
     }
   }
 
@@ -128,8 +124,7 @@ export default function Home() {
   }, [vinculos]);
 
   const anosDisponiveis = useMemo(() => {
-    const anos = vinculos.filter((x) => x.aluno === aluno).map((x) => x.ano);
-    return Array.from(new Set(anos)).sort((a, b) => b - a);
+    return vinculos.filter((x) => x.aluno === aluno).map((x) => x.ano);
   }, [vinculos, aluno]);
 
   useEffect(() => {
@@ -157,8 +152,6 @@ export default function Home() {
       .eq("aluno", aluno)
       .eq("etapa", etapa)
       .order("disciplina", { ascending: true })
-      // ✅ se existir, mantém a mesma ordem do Excel/etapa anterior
-      .order("ordem", { ascending: true, nullsFirst: false })
       .order("created_at", { ascending: true });
 
     setLoading(false);
@@ -190,19 +183,7 @@ export default function Home() {
         const aa = a.avaliacao?.toLowerCase() === "ajuste" ? 1 : 0;
         const bb = b.avaliacao?.toLowerCase() === "ajuste" ? 1 : 0;
         if (aa !== bb) return aa - bb;
-
-        // ✅ prioridade: ordem
-        const oa = a.ordem ?? 999999;
-        const ob = b.ordem ?? 999999;
-        if (oa !== ob) return oa - ob;
-
-        // fallback
-        const ca = a.created_at || "";
-        const cb = b.created_at || "";
-        const c = ca.localeCompare(cb);
-        if (c !== 0) return c;
-
-        return (a.id ?? 0) - (b.id ?? 0);
+        return (a.created_at || "").localeCompare(b.created_at || "");
       });
     });
 
@@ -219,8 +200,6 @@ export default function Home() {
       avaliacao: "Nova avaliação",
       valor_max: 0,
       nota: null,
-      // opcional: coloca no final (ordem alta)
-      ordem: 999999,
     });
 
     if (error) return setMsg(error.message);
@@ -237,7 +216,7 @@ export default function Home() {
   async function patchLinha(id: number, patch: Partial<NotaRow>) {
     setMsg("");
     const { error } = await supabase.from("notas").update(patch).eq("id", id);
-    if (error) throw new Error(error.message);
+    if (error) return setMsg(error.message);
     setRows((prev) => prev.map((r) => (r.id === id ? ({ ...r, ...patch } as NotaRow) : r)));
   }
 
@@ -274,7 +253,6 @@ export default function Home() {
         avaliacao: "Ajuste",
         valor_max: diff,
         nota: null,
-        ordem: 999999,
       });
       if (error) return setMsg(error.message);
     }
@@ -339,10 +317,7 @@ export default function Home() {
                   const novoAluno = e.target.value;
                   setAluno(novoAluno);
 
-                  const anos = Array.from(
-                    new Set(vinculos.filter((x) => x.aluno === novoAluno).map((x) => x.ano))
-                  ).sort((a, b) => b - a);
-
+                  const anos = vinculos.filter((x) => x.aluno === novoAluno).map((x) => x.ano);
                   const novoAno = anos[0];
                   if (Number.isFinite(novoAno)) setAno(novoAno);
 
@@ -442,12 +417,51 @@ export default function Home() {
                 <div className="flex flex-col gap-2 border-b border-white/30 p-4 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <h2 className={`text-lg font-extrabold ${bernNavy}`}>{disciplina}</h2>
+
+                    {/* ✅ SOMA MÁX (só enquanto não fechou) */}
                     {!r.ok && (
                       <div className="mt-1 text-xs text-slate-700">
                         Soma Máx: <b className="text-amber-700">{fmt1(r.somaMax)}</b> / {totalEtapa}{" "}
                         <span className="text-slate-500">(complete os valores)</span>
                       </div>
                     )}
+
+                    {/* ✅ FRASES (faltam / em disputa) — aqui estava faltando no seu arquivo */}
+                    {(() => {
+                      const mediaEtapa = totalEtapa * 0.6;
+
+                      // nota acumulada real: soma das notas lançadas (null não conta)
+                      const notaLancada = round1(list.reduce((acc, rr) => acc + (rr.nota ?? 0), 0));
+                      const temAlgumaNota = list.some((rr) => rr.nota !== null && rr.nota !== undefined);
+
+                      // quanto falta pra média
+                      const faltam = round1(Math.max(0, mediaEtapa - notaLancada));
+
+                      // pontos ainda "em disputa": somatório do valor_max das avaliações SEM nota (e não conta Ajuste)
+                      const emDisputa = round1(
+                        list
+                          .filter((rr) => {
+                            const semNota = rr.nota === null || rr.nota === undefined;
+                            const isAjuste = (rr.avaliacao || "").toLowerCase() === "ajuste";
+                            return semNota && !isAjuste;
+                          })
+                          .reduce((acc, rr) => acc + toNum(rr.valor_max), 0)
+                      );
+
+                      const atingiuMedia = temAlgumaNota && notaLancada >= mediaEtapa - 1e-9;
+                      if (!temAlgumaNota || atingiuMedia) return null;
+
+                      return (
+                        <div className="mt-1 flex flex-col gap-1 text-xs text-slate-700">
+                          <span>
+                            Faltam <b className="text-[#1f2a6a]">{fmt1(faltam)}</b> pontos para atingir a média da etapa.
+                          </span>
+                          <span>
+                            Ainda há <b className="text-[#1f2a6a]">{fmt1(emDisputa)}</b> pontos em disputa.
+                          </span>
+                        </div>
+                      );
+                    })()}
                   </div>
 
                   <div className="flex flex-wrap gap-2">
@@ -670,8 +684,7 @@ export default function Home() {
 
                 {!r.ok && (
                   <div className="border-t border-white/30 bg-amber-50/70 p-3 text-xs font-semibold text-amber-900">
-                    Esta disciplina não fecha o total da etapa. Clique em <b>Fechar total</b> para criar/ajustar a linha
-                    “Ajuste”.
+                    Esta disciplina não fecha o total da etapa. Clique em <b>Fechar total</b> para criar/ajustar a linha “Ajuste”.
                   </div>
                 )}
               </div>
