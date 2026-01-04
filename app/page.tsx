@@ -496,13 +496,16 @@ export default function Home() {
                       + Avaliação
                     </button>
 
-                    <button
-                      className="rounded-2xl bg-[#e6fffb] px-3 py-2 text-sm font-bold text-[#0f766e] shadow-sm hover:bg-[#ccfbf1]"
-                      onClick={() => fecharTotal(disciplina, list)}
-                      title="Cria/atualiza uma linha 'Ajuste' para fechar o total"
-                    >
-                      Fechar total
-                    </button>
+                    {r.diff > 0 && (
+  <button
+    className="rounded-2xl bg-[#e6fffb] px-3 py-2 text-sm font-bold text-[#0f766e] shadow-sm hover:bg-[#ccfbf1]"
+    onClick={() => fecharTotal(disciplina, list)}
+    title="Cria/atualiza uma linha 'Ajuste' para fechar o total"
+  >
+    Fechar total
+  </button>
+)}
+
                   </div>
                 </div>
 
