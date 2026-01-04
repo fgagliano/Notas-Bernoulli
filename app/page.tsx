@@ -277,10 +277,18 @@ export default function Home() {
   }
 
   function disciplinaResumo(list: NotaRow[]) {
-    const somaMax = round1(list.reduce((a, r) => a + toNum(r.valor_max), 0));
-    const ok = Math.abs(somaMax - totalEtapa) < 0.001;
-    return { somaMax, ok };
-  }
+  const somaMax = round1(list.reduce((a, r) => a + toNum(r.valor_max), 0));
+  const ok = Math.abs(somaMax - totalEtapa) < 0.001;
+
+  // diff > 0 => faltou (mantém comportamento atual)
+  // diff = 0 => ok (some)
+  // diff < 0 => excedeu
+  const diff = round1(totalEtapa - somaMax);
+  const excedeu = diff < 0 ? round1(-diff) : 0;
+
+  return { somaMax, ok, diff, excedeu };
+}
+
 
   // Tema (Bernoulli-like)
   const bernTeal = "text-[#14b8a6]";
@@ -698,11 +706,18 @@ export default function Home() {
                   </table>
                 </div>
 
-                {!r.ok && (
-                  <div className="border-t border-white/30 bg-amber-50/70 p-3 text-xs font-semibold text-amber-900">
-                    Esta disciplina não fecha o total da etapa. Clique em <b>Fechar total</b> para criar/ajustar a linha “Ajuste”.
-                  </div>
-                )}
+                {!r.ok && r.excedeu === 0 && (
+  <div className="border-t border-white/30 bg-amber-50/70 p-3 text-xs font-semibold text-amber-900">
+    Esta disciplina não fecha o total da etapa. Clique em <b>Fechar total</b> para criar/ajustar a linha “Ajuste”.
+  </div>
+)}
+
+{!r.ok && r.excedeu > 0 && (
+  <div className="border-t border-white/30 bg-white/60 p-3 text-xs font-semibold text-slate-800">
+    Esta etapa possui <b>{fmt1(r.excedeu)}</b> ponto(s) extras.
+  </div>
+)}
+
               </div>
             );
           })}
