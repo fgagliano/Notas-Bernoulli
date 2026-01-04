@@ -443,12 +443,13 @@ export default function Home() {
                     <h2 className={`text-lg font-extrabold ${bernNavy}`}>{disciplina}</h2>
 
                     {/* ✅ SOMA MÁX (só enquanto não fechou) */}
-                    {!r.ok && (
-                      <div className="mt-1 text-xs text-slate-700">
-                        Soma Máx: <b className="text-amber-700">{fmt1(r.somaMax)}</b> / {totalEtapa}{" "}
-                        <span className="text-slate-500">(complete os valores)</span>
-                      </div>
-                    )}
+                    {r.diff > 0 && (
+  <div className="mt-1 text-xs text-slate-700">
+    Soma Máx: <b className="text-amber-700">{fmt1(r.somaMax)}</b> / {totalEtapa}{" "}
+    <span className="text-slate-500">(complete os valores)</span>
+  </div>
+)}
+
 
                     {/* ✅ FRASES (faltam / em disputa) — aqui estava faltando no seu arquivo */}
                     {(() => {
