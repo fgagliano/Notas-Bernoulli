@@ -682,7 +682,7 @@ useEffect(() => {
                             </td>
 
                             <td className={`${td} text-center`}>
-                              <span className="inline-flex rounded-lg bg-white/70 px-2 py-1 text-xs font-semibold text-slate-800 shadow-sm">
+                              <span className="inline-flex rounded-lg bg-white/70 px-1.5 py-0.5 text-xs font-semibold text-slate-800 shadow-sm">
                                 {fmt1(mediaLinha)}
                               </span>
                             </td>
