@@ -479,6 +479,7 @@ useEffect(() => {
 
           {porDisciplina.map(([disciplina, list]) => {
             const r = disciplinaResumo(list);
+            const obs = (list.find((x) => (x.obs ?? "").trim() !== "")?.obs ?? "").trim();
 
             return (
               <div key={disciplina} className="rounded-3xl border border-white/30 bg-white/60 shadow-sm backdrop-blur">
