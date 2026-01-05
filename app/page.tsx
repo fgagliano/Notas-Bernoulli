@@ -339,7 +339,7 @@ useEffect(() => {
   const bernNavy = "text-[#1f2a6a]";
   const focusRing = "focus:ring-2 focus:ring-[#14b8a6] focus:border-[#14b8a6]";
 
-  const td = "px-2 sm:px-4 py-2";
+  const td = "px-1 sm:px-4 py-2";
 
   const inputNum =
   "w-12 sm:w-16 md:w-20 text-right rounded-lg border border-[#2dd4bf]/60 bg-[#e6fffb] " +
