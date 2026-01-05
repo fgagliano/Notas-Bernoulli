@@ -342,7 +342,7 @@ useEffect(() => {
   const td = "px-0.5 sm:px-4 py-2";
 
   const inputNum =
-  "w-12 sm:w-16 md:w-20 text-right rounded-lg border border-[#2dd4bf]/60 bg-[#e6fffb] " +
+  "w-11 sm:w-16 md:w-20 text-right rounded-lg border border-[#2dd4bf]/60 bg-[#e6fffb] " +
   "px-1 py-1 placeholder:text-slate-500 shadow-sm outline-none " +
   focusRing;
 
