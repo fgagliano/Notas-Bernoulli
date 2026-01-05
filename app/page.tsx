@@ -485,24 +485,26 @@ useEffect(() => {
               <div key={disciplina} className="rounded-3xl border border-white/30 bg-white/60 shadow-sm backdrop-blur">
                 <div className="flex flex-col gap-2 border-b border-white/30 p-4 sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    <h2 className={`text-lg font-extrabold ${bernNavy}`}>
-  {disciplina}
+  <h2 className={`text-lg font-extrabold ${bernNavy}`}>{disciplina}</h2>
+
   {(() => {
     const obs = (list.find((x) => (x.obs ?? "").trim() !== "")?.obs ?? "").trim();
-    return obs ? <span className="ml-2 whitespace-pre-line font-semibold text-slate-700">
-  ({obs})
-</span>
- : null;
+    if (!obs) return null;
+    return (
+      <div className="mt-1 whitespace-pre-line text-xs font-semibold text-slate-700">
+        {obs}
+      </div>
+    );
   })()}
-</h2>
 
-                    {/* ✅ SOMA MÁX (só enquanto não fechou) */}
-                    {r.diff > 0 && (
-  <div className="mt-1 text-xs text-slate-700">
-    Soma Máx: <b className="text-amber-700">{fmt1(r.somaMax)}</b> / {totalEtapa}{" "}
-    <span className="text-slate-500">(complete os valores)</span>
-  </div>
-)}
+  {/* ✅ SOMA MÁX (só enquanto não fechou) */}
+  {r.diff > 0 && (
+    <div className="mt-1 text-xs text-slate-700">
+      Soma Máx: <b className="text-amber-700">{fmt1(r.somaMax)}</b> / {totalEtapa}{" "}
+      <span className="text-slate-500">(complete os valores)</span>
+    </div>
+  )}
+
 
 
                     {/* ✅ FRASES (faltam / em disputa) — aqui estava faltando no seu arquivo */}
