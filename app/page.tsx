@@ -68,6 +68,12 @@ function formatarAvaliacao(nome: string) {
   return t;
 }
 
+function formatarAvaliacao(label: string) {
+  return label
+    .replace(/^Para Casa/i, "P/ 🏠")
+    .replace(/^Para\s+Casa/i, "P/ 🏠");
+}
+
 
 type EditBuffer = Record<number, { valor_max?: string; nota?: string }>;
 
