@@ -225,30 +225,30 @@ useEffect(() => {
 }, [loadingVinculos, aluno, ano, didInitSmartDefaults]);
 
   const porDisciplina = useMemo(() => {
-    const map: Record<string, NotaRow[]> = {};
-    for (const r of rows) {
-      const key = (r.disciplina || "").trim() || "(Sem disciplina)";
-      (map[key] ||= []).push(r);
-    }
+  const map: Record<string, NotaRow[]> = {};
+  for (const r of rows) {
+    const key = (r.disciplina || "").trim() || "(Sem disciplina)";
+    (map[key] ||= []).push(r);
+  }
 
-    Object.keys(map).forEach((k) => {
-  map[k].sort((a, b) => {
-    // 1️⃣ Ajuste sempre por último
-    const aa = a.avaliacao?.toLowerCase() === "ajuste" ? 1 : 0;
-    const bb = b.avaliacao?.toLowerCase() === "ajuste" ? 1 : 0;
-    if (aa !== bb) return aa - bb;
+  Object.keys(map).forEach((k) => {
+    map[k].sort((a, b) => {
+      // 1️⃣ Ajuste sempre por último
+      const aa = a.avaliacao?.toLowerCase() === "ajuste" ? 1 : 0;
+      const bb = b.avaliacao?.toLowerCase() === "ajuste" ? 1 : 0;
+      if (aa !== bb) return aa - bb;
 
-    // 2️⃣ Ordem alfabética da avaliação (A1, A2, A5, A6...)
-    return (a.avaliacao || "").localeCompare(b.avaliacao || "", "pt-BR", {
-      numeric: true,
-      sensitivity: "base",
+      // 2️⃣ Ordem alfabética da avaliação (A1, A2, A5, A6...)
+      return (a.avaliacao || "").localeCompare(b.avaliacao || "", "pt-BR", {
+        numeric: true,
+        sensitivity: "base",
+      });
     });
   });
-});
 
+  return Object.entries(map);
+}, [rows]);
 
-    return Object.entries(map);
-  }, [rows]);
 
   async function addLinha(disciplina: string) {
     setMsg("");
