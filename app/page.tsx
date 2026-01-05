@@ -665,15 +665,17 @@ function formatarAvaliacao(nome: string) {
                         return (
                           <tr key={row.id} className="border-t border-white/30 bg-white/40">
                             <td className={td}>
-                              <input
-                                className={[
-                                  inputAvaliacao,
-                                  isAjuste ? "border-[#14b8a6]/50 bg-[#ccfbf1]" : "",
-                                ].join(" ")}
-                                value={formatarAvaliacao(row.avaliacao || "")}
-                                onChange={(e) => patchLinha(row.id, { avaliacao: e.target.value })}
-                              />
-                            </td>
+  <input
+    title={formatarAvaliacao(row.avaliacao || "")}
+    className={[
+      inputAvaliacao,
+      isAjuste ? "border-[#14b8a6]/50 bg-[#ccfbf1]" : "",
+    ].join(" ")}
+    value={row.avaliacao || ""}
+    onChange={(e) => patchLinha(row.id, { avaliacao: e.target.value })}
+  />
+</td>
+
 
                             <td className={td}>
                               <input
