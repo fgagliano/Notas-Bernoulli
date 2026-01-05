@@ -488,7 +488,10 @@ useEffect(() => {
   {disciplina}
   {(() => {
     const obs = (list.find((x) => (x.obs ?? "").trim() !== "")?.obs ?? "").trim();
-    return obs ? <span className="font-semibold text-slate-700">{" "}({obs})</span> : null;
+    return obs ? <span className="ml-2 whitespace-pre-line font-semibold text-slate-700">
+  ({obs})
+</span>
+ : null;
   })()}
 </h2>
 
