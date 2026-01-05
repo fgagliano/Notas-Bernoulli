@@ -81,6 +81,8 @@ export default function Home() {
   const [rows, setRows] = useState<NotaRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<string>("");
+  const [editAvaliacaoOn, setEditAvaliacaoOn] = useState(false); // default OFF
+
 
   const [edit, setEdit] = useState<EditBuffer>({});
   const [didInitSmartDefaults, setDidInitSmartDefaults] = useState(false);
