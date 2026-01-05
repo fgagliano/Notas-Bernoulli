@@ -483,7 +483,7 @@ useEffect(() => {
 
             return (
               <div key={disciplina} className="rounded-3xl border border-white/30 bg-white/60 shadow-sm backdrop-blur">
-                <div className="flex flex-col gap-2 border-b border-white/30 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center justify-between gap-2 border-b border-white/30 p-4">
                   <div>
   <h2 className={`text-lg font-extrabold ${bernNavy}`}>{disciplina}</h2>
 
