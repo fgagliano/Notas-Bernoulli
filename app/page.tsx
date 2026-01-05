@@ -469,6 +469,46 @@ function formatarAvaliacao(nome: string) {
               </div>
             </div>
 
+<div className="rounded-2xl border border-white/30 bg-white/60 p-3 shadow-sm backdrop-blur">
+  <div className="text-xs font-semibold text-slate-700">Editar avaliações</div>
+
+  <button
+    type="button"
+    onClick={() => setEditAvaliacaoOn((v) => !v)}
+    className={[
+      "mt-1 inline-flex items-center gap-2 rounded-lg border px-3 py-1 text-sm font-semibold shadow-sm",
+      editAvaliacaoOn
+        ? "border-[#14b8a6]/60 bg-[#e6fffb] text-[#0f766e]"
+        : "border-slate-200 bg-white/80 text-slate-700",
+    ].join(" ")}
+    title={
+      editAvaliacaoOn
+        ? "Edição de avaliações LIBERADA"
+        : "Edição de avaliações BLOQUEADA (padrão)"
+    }
+  >
+    <span
+      className={[
+        "inline-flex h-5 w-9 items-center rounded-full p-0.5 transition",
+        editAvaliacaoOn ? "bg-[#14b8a6]" : "bg-slate-300",
+      ].join(" ")}
+    >
+      <span
+        className={[
+          "h-4 w-4 rounded-full bg-white shadow transition",
+          editAvaliacaoOn ? "translate-x-4" : "translate-x-0",
+        ].join(" ")}
+      />
+    </span>
+    {editAvaliacaoOn ? "ON" : "OFF"}
+  </button>
+
+  <div className="mt-1 text-[11px] text-slate-600">
+    {editAvaliacaoOn ? "Cuidado: edição habilitada." : "Seguro: travado para evitar edição acidental."}
+  </div>
+</div>
+
+            
             <button
               className="rounded-2xl bg-[#14b8a6] px-4 py-3 text-sm font-extrabold text-white shadow-sm hover:bg-[#10a99a] active:translate-y-[1px]"
               onClick={criarDisciplina}
