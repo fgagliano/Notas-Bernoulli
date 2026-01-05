@@ -12,6 +12,7 @@ type NotaRow = {
   avaliacao: string;
   valor_max: number;
   nota: number | null;
+  obs?: string | null;
   created_at?: string;
 };
 
@@ -483,7 +484,13 @@ useEffect(() => {
               <div key={disciplina} className="rounded-3xl border border-white/30 bg-white/60 shadow-sm backdrop-blur">
                 <div className="flex flex-col gap-2 border-b border-white/30 p-4 sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    <h2 className={`text-lg font-extrabold ${bernNavy}`}>{disciplina}</h2>
+                    <h2 className={`text-lg font-extrabold ${bernNavy}`}>
+  {disciplina}
+  {(() => {
+    const obs = (list.find((x) => (x.obs ?? "").trim() !== "")?.obs ?? "").trim();
+    return obs ? <span className="font-semibold text-slate-700">{" "}({obs})</span> : null;
+  })()}
+</h2>
 
                     {/* ✅ SOMA MÁX (só enquanto não fechou) */}
                     {r.diff > 0 && (
