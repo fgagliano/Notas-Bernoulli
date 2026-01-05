@@ -333,7 +333,19 @@ useEffect(() => {
   return { somaMax, ok, diff, excedeu };
 }
 
+function formatarAvaliacao(nome: string) {
+  if (!nome) return nome;
 
+  const prefix = "para casa";
+
+  if (nome.toLowerCase().startsWith(prefix)) {
+    return "P/ 🏠" + nome.slice(prefix.length);
+  }
+
+  return nome;
+}
+
+  
   // Tema (Bernoulli-like)
   const bernTeal = "text-[#14b8a6]";
   const bernNavy = "text-[#1f2a6a]";
