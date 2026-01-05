@@ -609,11 +609,25 @@ function formatarAvaliacao(nome: string) {
 
                   <div className="flex flex-wrap gap-2">
                     <button
-                      className="rounded-2xl bg-white/80 px-3 py-2 text-sm font-semibold text-slate-800 shadow-sm hover:bg-white"
-                      onClick={() => addLinha(disciplina)}
-                    >
-                      + Avaliação
-                    </button>
+  className={[
+    "rounded-2xl px-3 py-2 text-sm font-semibold shadow-sm",
+    editAvaliacaoOn
+      ? "bg-white/80 text-slate-800 hover:bg-white"
+      : "bg-slate-100 text-slate-400 cursor-not-allowed",
+  ].join(" ")}
+  title={
+    editAvaliacaoOn
+      ? "Adicionar nova avaliação"
+      : "Edição de avaliações bloqueada (ative no cabeçalho)"
+  }
+  onClick={() => {
+    if (!editAvaliacaoOn) return;
+    addLinha(disciplina);
+  }}
+>
+  + Avaliação
+</button>
+
 
                     {r.diff > 0 && (
   <button
