@@ -64,7 +64,8 @@ export default function Home() {
   const [loadingVinculos, setLoadingVinculos] = useState(false);
 
   const [aluno, setAluno] = useState<string>("Miguel");
-  const [ano, setAno] = useState<number>(2025);
+  const currentYear = new Date().getFullYear();
+  const [ano, setAno] = useState<number>(currentYear);
   const [serie, setSerie] = useState<string>("");
 
   const [etapa, setEtapa] = useState<1 | 2 | 3>(1);
@@ -74,7 +75,7 @@ export default function Home() {
   const [msg, setMsg] = useState<string>("");
 
   const [edit, setEdit] = useState<EditBuffer>({});
-
+  const [didInitSmartDefaults, setDidInitSmartDefaults] = useState(false);
   const totalEtapa = ETAPA_TOTAL[etapa];
 
   // ==========================
@@ -174,11 +175,53 @@ export default function Home() {
     setRows((data as NotaRow[]) || []);
     setEdit({});
   }
+async function escolherEtapaInicialSmart(alunoSel: string, anoSel: number) {
+  const { data, error } = await supabase
+    .from("notas")
+    .select("etapa, avaliacao, nota")
+    .eq("aluno", alunoSel)
+    .eq("ano", anoSel)
+    .in("etapa", [1, 2, 3]);
+
+  if (error) return;
+
+  const list =
+    (data as Array<{ etapa: number; avaliacao: string | null; nota: number | null }>) ?? [];
+
+  if (list.length === 0) {
+    setEtapa(1);
+    return;
+  }
+
+  function etapaTemNotaFaltando(e: 1 | 2 | 3) {
+    return list.some((r) => {
+      if (r.etapa !== e) return false;
+      const isAjuste = (r.avaliacao || "").toLowerCase() === "ajuste";
+      if (isAjuste) return false;
+      return r.nota === null || r.nota === undefined;
+    });
+  }
+
+  if (etapaTemNotaFaltando(1)) return setEtapa(1);
+  if (etapaTemNotaFaltando(2)) return setEtapa(2);
+  setEtapa(3);
+}
 
   useEffect(() => {
     carregarNotas();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ano, aluno, etapa]);
+useEffect(() => {
+  if (didInitSmartDefaults) return;
+  if (loadingVinculos) return;
+  if (!aluno || !Number.isFinite(ano)) return;
+
+  escolherEtapaInicialSmart(aluno, ano).finally(() => {
+    setDidInitSmartDefaults(true);
+  });
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [loadingVinculos, aluno, ano, didInitSmartDefaults]);
 
   const porDisciplina = useMemo(() => {
     const map: Record<string, NotaRow[]> = {};
