@@ -225,30 +225,30 @@ useEffect(() => {
 }, [loadingVinculos, aluno, ano, didInitSmartDefaults]);
 
   const porDisciplina = useMemo(() => {
-  const map: Record<string, NotaRow[]> = {};
-  for (const r of rows) {
-    const key = (r.disciplina || "").trim() || "(Sem disciplina)";
-    (map[key] ||= []).push(r);
-  }
+    const map: Record<string, NotaRow[]> = {};
+    for (const r of rows) {
+      const key = (r.disciplina || "").trim() || "(Sem disciplina)";
+      (map[key] ||= []).push(r);
+    }
 
-  Object.keys(map).forEach((k) => {
-    map[k].sort((a, b) => {
-      // 1️⃣ Ajuste sempre por último
-      const aa = a.avaliacao?.toLowerCase() === "ajuste" ? 1 : 0;
-      const bb = b.avaliacao?.toLowerCase() === "ajuste" ? 1 : 0;
-      if (aa !== bb) return aa - bb;
+    Object.keys(map).forEach((k) => {
+  map[k].sort((a, b) => {
+    // 1️⃣ Ajuste sempre por último
+    const aa = a.avaliacao?.toLowerCase() === "ajuste" ? 1 : 0;
+    const bb = b.avaliacao?.toLowerCase() === "ajuste" ? 1 : 0;
+    if (aa !== bb) return aa - bb;
 
-      // 2️⃣ Ordem alfabética da avaliação (A1, A2, A5, A6...)
-      return (a.avaliacao || "").localeCompare(b.avaliacao || "", "pt-BR", {
-        numeric: true,
-        sensitivity: "base",
-      });
+    // 2️⃣ Ordem alfabética da avaliação (A1, A2, A5, A6...)
+    return (a.avaliacao || "").localeCompare(b.avaliacao || "", "pt-BR", {
+      numeric: true,
+      sensitivity: "base",
     });
   });
+});
 
-  return Object.entries(map);
-}, [rows]);
 
+    return Object.entries(map);
+  }, [rows]);
 
   async function addLinha(disciplina: string) {
     setMsg("");
@@ -484,19 +484,16 @@ useEffect(() => {
               <div key={disciplina} className="rounded-3xl border border-white/30 bg-white/60 shadow-sm backdrop-blur">
                 <div className="flex flex-col gap-2 border-b border-white/30 p-4 sm:flex-row sm:items-center sm:justify-between">
                   <div>
-  <h2 className={`text-lg font-extrabold ${bernNavy}`}>{disciplina}</h2>
-
+                    <h2 className={`text-lg font-extrabold ${bernNavy}`}>
+  {disciplina}
   {(() => {
     const obs = (list.find((x) => (x.obs ?? "").trim() !== "")?.obs ?? "").trim();
-    if (!obs) return null;
-    return (
-      <div className="mt-1 whitespace-pre-line text-xs font-semibold text-slate-700">
-        {obs}
-      </div>
-    );
+    return obs ? <span className="ml-2 whitespace-pre-line font-semibold text-slate-700">
+  ({obs})
+</span>
+ : null;
   })()}
-</div>
-
+</h2>
 
                     {/* ✅ SOMA MÁX (só enquanto não fechou) */}
                     {r.diff > 0 && (
