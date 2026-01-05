@@ -658,7 +658,7 @@ function formatarAvaliacao(nome: string) {
                                   inputAvaliacao,
                                   isAjuste ? "border-[#14b8a6]/50 bg-[#ccfbf1]" : "",
                                 ].join(" ")}
-                                value={row.avaliacao || ""}
+                                value={formatarAvaliacao(row.avaliacao || "")}
                                 onChange={(e) => patchLinha(row.id, { avaliacao: e.target.value })}
                               />
                             </td>
