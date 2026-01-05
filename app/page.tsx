@@ -504,7 +504,7 @@ function formatarAvaliacao(nome: string) {
   </button>
 
   <div className="mt-1 text-[11px] text-slate-600">
-    {editAvaliacaoOn ? "Cuidado: edição habilitada." : "Seguro: travado para evitar edição acidental."}
+    {editAvaliacaoOn ? "Cuidado: edição habilitada." : "Travado. Evita edição acidental."}
   </div>
 </div>
 
