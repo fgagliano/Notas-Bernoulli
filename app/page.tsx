@@ -571,13 +571,13 @@ useEffect(() => {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="bg-gradient-to-r from-[#1f2a6a] to-[#14b8a6] text-left text-xs text-white">
-                        <th className="px-0.5 sm:px-4 py-3">Avaliação</th>
-                        <th className="px-0.5 sm:px-4 py-3">Valor</th>
+                        <th className="px-0.5 sm:px-4 py-3 text-center">Avaliação</th>
+                        <th className="px-0.5 sm:px-4 py-3 text-center">Valor</th>
                         <th className="px-0.5 sm:px-4 py-3 text-center">Média</th>
-                        <th className="px-0.5 sm:px-4 py-3">Nota</th>
+                        <th className="px-0.5 sm:px-4 py-3 text-center">Nota</th>
                         <th className="px-0.5 sm:px-4 py-3 text-center">Média Acum.</th>
                         <th className="px-0.5 sm:px-4 py-3 text-center">Nota Acum.</th>
-                        <th className="px-0.5 sm:px-4 py-3 text-right">Del</th>
+                        <th className="px-0.5 sm:px-4 py-3 text-center">Del</th>
                       </tr>
                     </thead>
 
