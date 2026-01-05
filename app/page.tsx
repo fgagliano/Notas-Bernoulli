@@ -701,17 +701,27 @@ function formatarAvaliacao(nome: string) {
 
                         return (
                           <tr key={row.id} className="border-t border-white/30 bg-white/40">
-                            <td className={td}>
+                           <td className={td}>
   <input
-    title={formatarAvaliacao(row.avaliacao || "")}
+    title={
+      !editAvaliacaoOn
+        ? "Edição de avaliações bloqueada (ative no cabeçalho)"
+        : formatarAvaliacao(row.avaliacao || "")
+    }
     className={[
       inputAvaliacao,
       isAjuste ? "border-[#14b8a6]/50 bg-[#ccfbf1]" : "",
+      !editAvaliacaoOn ? "opacity-70 cursor-not-allowed" : "",
     ].join(" ")}
     value={formatarAvaliacao(row.avaliacao || "")}
-    onChange={(e) => patchLinha(row.id, { avaliacao: e.target.value })}
+    readOnly={!editAvaliacaoOn}
+    onChange={(e) => {
+      if (!editAvaliacaoOn) return;
+      patchLinha(row.id, { avaliacao: e.target.value });
+    }}
   />
 </td>
+
 
 
                             <td className={td}>
