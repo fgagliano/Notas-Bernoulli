@@ -757,7 +757,7 @@ useEffect(() => {
                                 className="rounded-lg px-2 py-1 text-xs font-semibold text-red-700 hover:bg-red-50/80"
                                 onClick={() => delLinha(row.id)}
                               >
-                                Excluir
+                                🗑️
                               </button>
                             </td>
                           </tr>
