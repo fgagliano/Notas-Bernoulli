@@ -342,9 +342,10 @@ useEffect(() => {
   const td = "px-2 sm:px-4 py-2";
 
   const inputNum =
-    "w-14 sm:w-20 md:w-24 text-right rounded-lg border border-[#2dd4bf]/60 bg-[#e6fffb] " +
-    "px-2 py-1 placeholder:text-slate-500 shadow-sm outline-none " +
-    focusRing;
+  "w-12 sm:w-16 md:w-20 text-right rounded-lg border border-[#2dd4bf]/60 bg-[#e6fffb] " +
+  "px-1 py-1 placeholder:text-slate-500 shadow-sm outline-none " +
+  focusRing;
+
 
   const inputAvaliacao =
     "w-full rounded-lg border px-2 py-1 shadow-sm outline-none " +
