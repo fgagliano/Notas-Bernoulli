@@ -56,6 +56,18 @@ function parsePtNumber(s: string): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+function formatarAvaliacao(nome: string) {
+  const t = (nome ?? "").trim();
+  if (!t) return "";
+
+  // aceita "Para Casa", "para casa", "PARA CASA", etc.
+  if (t.toLowerCase().startsWith("para casa")) {
+    return "P/ 🏠" + t.slice("para casa".length);
+  }
+
+  return t;
+}
+
 
 type EditBuffer = Record<number, { valor_max?: string; nota?: string }>;
 
