@@ -81,6 +81,13 @@ export default function Home() {
   const [rows, setRows] = useState<NotaRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<string>("");
+  // ==========================
+// AUTH (login simples)
+// ==========================
+const [session, setSession] = useState<any>(null);
+const [email, setEmail] = useState("");
+const [password, setPassword] = useState("");
+
   const [editAvaliacaoOn, setEditAvaliacaoOn] = useState(false); // default OFF
 
 
