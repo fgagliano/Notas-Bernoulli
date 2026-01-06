@@ -95,6 +95,17 @@ const [password, setPassword] = useState("");
   const [didInitSmartDefaults, setDidInitSmartDefaults] = useState(false);
   const totalEtapa = ETAPA_TOTAL[etapa];
 
+async function handleLogin() {
+  setMsg("");
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) setMsg(error.message);
+}
+
+async function handleLogout() {
+  await supabase.auth.signOut();
+}
+
+  
   // ==========================
   // 1) Carrega vínculos aluno_ano
   // ==========================
