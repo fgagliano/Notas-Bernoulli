@@ -151,10 +151,24 @@ async function handleLogout() {
     }
   }
 
-  useEffect(() => {
-    carregarVinculos();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // 1) Ouve sessão do Supabase
+useEffect(() => {
+  supabase.auth.getSession().then(({ data }) => setSession(data.session));
+
+  const { data: sub } = supabase.auth.onAuthStateChange((_event, sess) => {
+    setSession(sess);
+  });
+
+  return () => sub.subscription.unsubscribe();
+}, []);
+
+// 2) Só carrega vínculos quando estiver logado
+useEffect(() => {
+  if (!session) return;
+  carregarVinculos();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [session]);
+
 
   // Opções dinâmicas
   const alunosDisponiveis = useMemo(() => {
