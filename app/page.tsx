@@ -409,6 +409,46 @@ function formatarAvaliacao(nome: string) {
     "w-full rounded-lg border px-2 py-1 shadow-sm outline-none " +
     "border-white/50 bg-white/70 focus:ring-2 focus:ring-[#14b8a6] focus:border-[#14b8a6]";
 
+if (!session) {
+  return (
+    <div className="min-h-screen flex items-center justify-center p-6">
+      <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <h1 className="text-lg font-extrabold text-slate-900">Entrar</h1>
+
+        {msg && (
+          <div className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+            {msg}
+          </div>
+        )}
+
+        <div className="mt-4 space-y-3">
+          <input
+            className="w-full rounded-xl border border-slate-300 px-3 py-2"
+            placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+          <input
+            className="w-full rounded-xl border border-slate-300 px-3 py-2"
+            placeholder="Senha"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+
+          <button
+            className="w-full rounded-xl bg-[#14b8a6] py-2 font-bold text-white"
+            onClick={handleLogin}
+          >
+            Entrar
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+  
   return (
     <div className="min-h-screen text-slate-900">
       <div className="absolute inset-0 -z-10 bg-gradient-to-r from-[#c9f7f1] via-[#bfeff2] to-[#88dfd7]" />
