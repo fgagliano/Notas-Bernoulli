@@ -190,6 +190,11 @@ useEffect(() => {
   async function carregarNotas() {
     setLoading(true);
     setMsg("");
+    if (!session) {
+  setLoading(false);
+  return;
+}
+
 
     if (!aluno || !Number.isFinite(ano)) {
       setRows([]);
