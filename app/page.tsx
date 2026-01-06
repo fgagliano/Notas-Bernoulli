@@ -594,6 +594,13 @@ if (!session) {
             >
               + Disciplina
             </button>
+            <button
+  className="rounded-2xl bg-white/80 px-4 py-3 text-sm font-extrabold text-slate-800 shadow-sm hover:bg-white"
+  onClick={handleLogout}
+>
+  Sair
+</button>
+
           </div>
         </header>
 
