@@ -22,11 +22,40 @@ type AlunoAnoRow = {
   serie: string;
 };
 
-const ETAPA_TOTAL: Record<number, number> = {
+const ETAPA_TOTAL_PADRAO: Record<1 | 2 | 3, number> = {
   1: 30,
   2: 30,
   3: 40,
 };
+
+const ETAPA_TOTAL_EM1_2026: Record<1 | 2 | 3, number> = {
+  1: 30,
+  2: 35,
+  3: 35,
+};
+
+// Detecta "1ª série do Ensino Médio" a partir do texto salvo em `serie`
+function isPrimeiraSerieEM(serie: string) {
+  const s = (serie || "").toLowerCase();
+
+  // cobre: "1ª série", "1a serie", "primeira série", "1º ano", etc.
+  const ehPrimeira =
+    /\b(1ª|1a|1º|1o|primeira)\s*(s[eé]rie|ano)\b/.test(s);
+
+  // cobre: "ensino médio", "em", "e.m."
+  const ehEM =
+    /\b(ensino\s*m[eé]dio|em|e\.m\.)\b/.test(s);
+
+  return ehPrimeira && ehEM;
+}
+
+function getEtapaTotals(serie: string, anoLetivo: number) {
+  // Ajuste o ano conforme o seu app (ex.: 2026)
+  if (anoLetivo === 2026 && isPrimeiraSerieEM(serie)) {
+    return ETAPA_TOTAL_EM1_2026;
+  }
+  return ETAPA_TOTAL_PADRAO;
+}
 
 function round1(n: number) {
   return Math.round(n * 10) / 10;
