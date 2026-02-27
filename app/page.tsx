@@ -122,7 +122,8 @@ const [password, setPassword] = useState("");
 
   const [edit, setEdit] = useState<EditBuffer>({});
   const [didInitSmartDefaults, setDidInitSmartDefaults] = useState(false);
-  const totalEtapa = ETAPA_TOTAL[etapa];
+  const etapaTotals = useMemo(() => getEtapaTotals(serie, ano), [serie, ano]);
+const totalEtapa = etapaTotals[etapa];
 
 async function handleLogin() {
   setMsg("");
