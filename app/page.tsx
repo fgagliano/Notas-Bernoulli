@@ -36,17 +36,19 @@ const ETAPA_TOTAL_EM1_2026: Record<1 | 2 | 3, number> = {
 
 // Detecta "1ª série do Ensino Médio" a partir do texto salvo em `serie`
 function isPrimeiraSerieEM(serie: string) {
-  const s = (serie || "").toLowerCase();
+  if (!serie) return false;
 
-  // cobre: "1ª série", "1a serie", "primeira série", "1º ano", etc.
-  const ehPrimeira =
-    /\b(1ª|1a|1º|1o|primeira)\s*(s[eé]rie|ano)\b/.test(s);
+  const s = serie.toUpperCase().trim();
 
-  // cobre: "ensino médio", "em", "e.m."
-  const ehEM =
-    /\b(ensino\s*m[eé]dio|em|e\.m\.)\b/.test(s);
+  // Caso específico do seu banco
+  if (s === "1EM") return true;
 
-  return ehPrimeira && ehEM;
+  // Fallback para descrições mais longas (se existirem no futuro)
+  return (
+    s.includes("1ª") && s.includes("EM") ||
+    s.includes("1º") && s.includes("EM") ||
+    s.includes("PRIMEIRA") && s.includes("EM")
+  );
 }
 
 function getEtapaTotals(serie: string, anoLetivo: number) {
