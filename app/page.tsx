@@ -28,7 +28,7 @@ const ETAPA_TOTAL_PADRAO: Record<1 | 2 | 3, number> = {
   3: 40,
 };
 
-const ETAPA_TOTAL_EM1_2026: Record<1 | 2 | 3, number> = {
+const ETAPA_TOTAL_EM1: Record<1 | 2 | 3, number> = {
   1: 30,
   2: 35,
   3: 35,
@@ -52,12 +52,12 @@ function isPrimeiraSerieEM(serie: string) {
 }
 
 function getEtapaTotals(serie: string, anoLetivo: number) {
-  // Ajuste o ano conforme o seu app (ex.: 2026)
-  if (anoLetivo === 2026 && isPrimeiraSerieEM(serie)) {
-    return ETAPA_TOTAL_EM1_2026;
+  if (isPrimeiraSerieEM(serie)) {
+    return ETAPA_TOTAL_EM1;
   }
   return ETAPA_TOTAL_PADRAO;
 }
+
 
 function round1(n: number) {
   return Math.round(n * 10) / 10;
