@@ -95,7 +95,7 @@ function formatarAvaliacao(label: string) {
 }
 
 
-type EditBuffer = Record<number, { valor_max?: string; nota?: string }>;
+type EditBuffer = Record<number, { valor_max?: string; nota?: string; avaliacao?: string }>;
 
 export default function Home() {
   // 🔽 Agora vem do banco
