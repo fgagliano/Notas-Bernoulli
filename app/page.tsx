@@ -837,23 +837,43 @@ if (!session) {
 
                         return (
                           <tr key={row.id} className="border-t border-white/30 bg-white/40">
-                           <td className={td}>
+<td className={td}>
   <input
     title={
       !editAvaliacaoOn
         ? "Edição de avaliações bloqueada (ative no cabeçalho)"
-        : formatarAvaliacao(row.avaliacao || "")
+        : (edit[row.id]?.avaliacao ?? row.avaliacao ?? "")
     }
     className={[
       inputAvaliacao,
       isAjuste ? "border-[#14b8a6]/50 bg-[#ccfbf1]" : "",
       !editAvaliacaoOn ? "opacity-70 cursor-not-allowed" : "",
     ].join(" ")}
-    value={formatarAvaliacao(row.avaliacao || "")}
+    value={
+      // enquanto edita: usa o buffer local (não formata e não salva a cada tecla)
+      editAvaliacaoOn
+        ? (edit[row.id]?.avaliacao ?? (row.avaliacao ?? ""))
+        : // quando NÃO edita: pode exibir formatado (P/ 🏠 etc.)
+          formatarAvaliacao(row.avaliacao || "")
+    }
     readOnly={!editAvaliacaoOn}
     onChange={(e) => {
       if (!editAvaliacaoOn) return;
-      patchLinha(row.id, { avaliacao: e.target.value });
+      const v = e.target.value;
+      setEdit((prev) => ({ ...prev, [row.id]: { ...prev[row.id], avaliacao: v } }));
+    }}
+    onBlur={async () => {
+      if (!editAvaliacaoOn) return;
+      if (edit[row.id]?.avaliacao === undefined) return;
+
+      const raw = (edit[row.id]?.avaliacao ?? "").trim();
+      await patchLinha(row.id, { avaliacao: raw });
+
+      setEdit((prev) => {
+        const next = { ...prev };
+        if (next[row.id]) delete next[row.id].avaliacao;
+        return next;
+      });
     }}
   />
 </td>
