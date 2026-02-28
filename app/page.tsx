@@ -286,10 +286,16 @@ async function escolherEtapaInicialSmart(alunoSel: string, anoSel: number) {
   setEtapa(3);
 }
 
-  useEffect(() => {
-    carregarNotas();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ano, aluno, etapa]);
+useEffect(() => {
+  if (!session) return;
+  if (loadingVinculos) return;
+  if (!didInitSmartDefaults) return;
+  if (!aluno || !Number.isFinite(ano)) return;
+
+  carregarNotas();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [session, loadingVinculos, didInitSmartDefaults, ano, aluno, etapa]);
+
 useEffect(() => {
   if (didInitSmartDefaults) return;
   if (loadingVinculos) return;
