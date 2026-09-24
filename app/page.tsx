@@ -110,14 +110,15 @@ export default function Home() {
   const [etapa, setEtapa] = useState<1 | 2 | 3>(1);
 
   const [rows, setRows] = useState<NotaRow[]>([]);
+  const [rowsAno, setRowsAno] = useState<NotaRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<string>("");
   // ==========================
-// AUTH (login simples)
-// ==========================
-const [session, setSession] = useState<any>(null);
-const [email, setEmail] = useState("");
-const [password, setPassword] = useState("");
+  // AUTH (login simples)
+  // ==========================
+  const [session, setSession] = useState<any>(null);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
   const [editAvaliacaoOn, setEditAvaliacaoOn] = useState(false); // default OFF
 
@@ -125,19 +126,19 @@ const [password, setPassword] = useState("");
   const [edit, setEdit] = useState<EditBuffer>({});
   const [didInitSmartDefaults, setDidInitSmartDefaults] = useState(false);
   const etapaTotals = useMemo(() => getEtapaTotals(serie, ano), [serie, ano]);
-const totalEtapa = etapaTotals[etapa];
+  const totalEtapa = etapaTotals[etapa];
 
-async function handleLogin() {
-  setMsg("");
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) setMsg(error.message);
-}
+  async function handleLogin() {
+    setMsg("");
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) setMsg(error.message);
+  }
 
-async function handleLogout() {
-  await supabase.auth.signOut();
-}
+  async function handleLogout() {
+    await supabase.auth.signOut();
+  }
 
-  
+
   // ==========================
   // 1) Carrega vínculos aluno_ano
   // ==========================
@@ -184,22 +185,22 @@ async function handleLogout() {
   }
 
   // 1) Ouve sessão do Supabase
-useEffect(() => {
-  supabase.auth.getSession().then(({ data }) => setSession(data.session));
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => setSession(data.session));
 
-  const { data: sub } = supabase.auth.onAuthStateChange((_event, sess) => {
-    setSession(sess);
-  });
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, sess) => {
+      setSession(sess);
+    });
 
-  return () => sub.subscription.unsubscribe();
-}, []);
+    return () => sub.subscription.unsubscribe();
+  }, []);
 
-// 2) Só carrega vínculos quando estiver logado
-useEffect(() => {
-  if (!session) return;
-  carregarVinculos();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-}, [session]);
+  // 2) Só carrega vínculos quando estiver logado
+  useEffect(() => {
+    if (!session) return;
+    carregarVinculos();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session]);
 
 
   // Opções dinâmicas
@@ -219,14 +220,36 @@ useEffect(() => {
   // ==========================
   // 2) Carrega notas
   // ==========================
+  async function carregarNotasDoAno() {
+    if (!session || !aluno || !Number.isFinite(ano)) {
+      setRowsAno([]);
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from("notas")
+      .select("*")
+      .eq("ano", ano)
+      .eq("aluno", aluno)
+      .in("etapa", [1, 2, 3]);
+
+    if (error) {
+      setMsg(error.message);
+      setRowsAno([]);
+      return;
+    }
+
+    setRowsAno((data as NotaRow[]) || []);
+  }
+
   async function carregarNotas() {
     setLoading(true);
     setMsg("");
-    if (!session) {
-  setLoading(false);
-  return;
-}
 
+    if (!session) {
+      setLoading(false);
+      return;
+    }
 
     if (!aluno || !Number.isFinite(ano)) {
       setRows([]);
@@ -254,59 +277,61 @@ useEffect(() => {
     setRows((data as NotaRow[]) || []);
     setEdit({});
   }
-async function escolherEtapaInicialSmart(alunoSel: string, anoSel: number) {
-  const { data, error } = await supabase
-    .from("notas")
-    .select("etapa, avaliacao, nota")
-    .eq("aluno", alunoSel)
-    .eq("ano", anoSel)
-    .in("etapa", [1, 2, 3]);
+  async function escolherEtapaInicialSmart(alunoSel: string, anoSel: number) {
+    const { data, error } = await supabase
+      .from("notas")
+      .select("etapa, avaliacao, nota")
+      .eq("aluno", alunoSel)
+      .eq("ano", anoSel)
+      .in("etapa", [1, 2, 3]);
 
-  if (error) return;
+    if (error) return;
 
-  const list =
-    (data as Array<{ etapa: number; avaliacao: string | null; nota: number | null }>) ?? [];
+    const list =
+      (data as Array<{ etapa: number; avaliacao: string | null; nota: number | null }>) ?? [];
 
-  if (list.length === 0) {
-    setEtapa(1);
-    return;
+    if (list.length === 0) {
+      setEtapa(1);
+      return;
+    }
+
+    function etapaTemNotaFaltando(e: 1 | 2 | 3) {
+      return list.some((r) => {
+        if (r.etapa !== e) return false;
+        const isAjuste = (r.avaliacao || "").toLowerCase() === "ajuste";
+        if (isAjuste) return false;
+        return r.nota === null || r.nota === undefined;
+      });
+    }
+
+    if (etapaTemNotaFaltando(1)) return setEtapa(1);
+    if (etapaTemNotaFaltando(2)) return setEtapa(2);
+    setEtapa(3);
   }
 
-  function etapaTemNotaFaltando(e: 1 | 2 | 3) {
-    return list.some((r) => {
-      if (r.etapa !== e) return false;
-      const isAjuste = (r.avaliacao || "").toLowerCase() === "ajuste";
-      if (isAjuste) return false;
-      return r.nota === null || r.nota === undefined;
+  useEffect(() => {
+    if (!session) return;
+    if (loadingVinculos) return;
+    if (!didInitSmartDefaults) return;
+    if (!aluno || !Number.isFinite(ano)) return;
+
+    carregarNotas();
+    carregarNotasDoAno();
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session, loadingVinculos, didInitSmartDefaults, ano, aluno, etapa]);
+
+  useEffect(() => {
+    if (didInitSmartDefaults) return;
+    if (loadingVinculos) return;
+    if (!aluno || !Number.isFinite(ano)) return;
+
+    escolherEtapaInicialSmart(aluno, ano).finally(() => {
+      setDidInitSmartDefaults(true);
     });
-  }
 
-  if (etapaTemNotaFaltando(1)) return setEtapa(1);
-  if (etapaTemNotaFaltando(2)) return setEtapa(2);
-  setEtapa(3);
-}
-
-useEffect(() => {
-  if (!session) return;
-  if (loadingVinculos) return;
-  if (!didInitSmartDefaults) return;
-  if (!aluno || !Number.isFinite(ano)) return;
-
-  carregarNotas();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-}, [session, loadingVinculos, didInitSmartDefaults, ano, aluno, etapa]);
-
-useEffect(() => {
-  if (didInitSmartDefaults) return;
-  if (loadingVinculos) return;
-  if (!aluno || !Number.isFinite(ano)) return;
-
-  escolherEtapaInicialSmart(aluno, ano).finally(() => {
-    setDidInitSmartDefaults(true);
-  });
-
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-}, [loadingVinculos, aluno, ano, didInitSmartDefaults]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loadingVinculos, aluno, ano, didInitSmartDefaults]);
 
   const porDisciplina = useMemo(() => {
     const map: Record<string, NotaRow[]> = {};
@@ -316,19 +341,19 @@ useEffect(() => {
     }
 
     Object.keys(map).forEach((k) => {
-  map[k].sort((a, b) => {
-    // 1️⃣ Ajuste sempre por último
-    const aa = a.avaliacao?.toLowerCase() === "ajuste" ? 1 : 0;
-    const bb = b.avaliacao?.toLowerCase() === "ajuste" ? 1 : 0;
-    if (aa !== bb) return aa - bb;
+      map[k].sort((a, b) => {
+        // 1️⃣ Ajuste sempre por último
+        const aa = a.avaliacao?.toLowerCase() === "ajuste" ? 1 : 0;
+        const bb = b.avaliacao?.toLowerCase() === "ajuste" ? 1 : 0;
+        if (aa !== bb) return aa - bb;
 
-    // 2️⃣ Ordem alfabética da avaliação (A1, A2, A5, A6...)
-    return (a.avaliacao || "").localeCompare(b.avaliacao || "", "pt-BR", {
-      numeric: true,
-      sensitivity: "base",
+        // 2️⃣ Ordem alfabética da avaliação (A1, A2, A5, A6...)
+        return (a.avaliacao || "").localeCompare(b.avaliacao || "", "pt-BR", {
+          numeric: true,
+          sensitivity: "base",
+        });
+      });
     });
-  });
-});
 
 
     return Object.entries(map);
@@ -405,31 +430,65 @@ useEffect(() => {
   }
 
   function disciplinaResumo(list: NotaRow[]) {
-  const somaMax = round1(list.reduce((a, r) => a + toNum(r.valor_max), 0));
-  const ok = Math.abs(somaMax - totalEtapa) < 0.001;
+    const somaMax = round1(list.reduce((a, r) => a + toNum(r.valor_max), 0));
+    const ok = Math.abs(somaMax - totalEtapa) < 0.001;
 
-  // diff > 0 => faltou (mantém comportamento atual)
-  // diff = 0 => ok (some)
-  // diff < 0 => excedeu
-  const diff = round1(totalEtapa - somaMax);
-  const excedeu = diff < 0 ? round1(-diff) : 0;
+    // diff > 0 => faltou (mantém comportamento atual)
+    // diff = 0 => ok (some)
+    // diff < 0 => excedeu
+    const diff = round1(totalEtapa - somaMax);
+    const excedeu = diff < 0 ? round1(-diff) : 0;
 
-  return { somaMax, ok, diff, excedeu };
-}
-
-function formatarAvaliacao(nome: string) {
-  if (!nome) return nome;
-
-  const prefix = "para casa";
-
-  if (nome.toLowerCase().startsWith(prefix)) {
-    return "P/ 🏠" + nome.slice(prefix.length);
+    return { somaMax, ok, diff, excedeu };
   }
 
-  return nome;
-}
+  function resumoAnualDisciplina(disciplina: string) {
+    const notasDisciplina = rowsAno.filter(
+      (r) => (r.disciplina || "").trim() === disciplina.trim()
+    );
 
-  
+    const notaAcumulada = round1(
+      notasDisciplina.reduce((total, r) => {
+        return total + (r.nota ?? 0);
+      }, 0)
+    );
+
+    const pontosEmDisputa = round1(
+      notasDisciplina
+        .filter((r) => {
+          const semNota = r.nota === null || r.nota === undefined;
+          const isAjuste =
+            (r.avaliacao || "").trim().toLowerCase() === "ajuste";
+
+          return semNota && !isAjuste;
+        })
+        .reduce((total, r) => total + toNum(r.valor_max), 0)
+    );
+
+    const faltaParaPassar = round1(Math.max(0, 60 - notaAcumulada));
+    const aprovado = notaAcumulada >= 60;
+
+    return {
+      notaAcumulada,
+      pontosEmDisputa,
+      faltaParaPassar,
+      aprovado,
+    };
+  }
+
+  function formatarAvaliacao(nome: string) {
+    if (!nome) return nome;
+
+    const prefix = "para casa";
+
+    if (nome.toLowerCase().startsWith(prefix)) {
+      return "P/ 🏠" + nome.slice(prefix.length);
+    }
+
+    return nome;
+  }
+
+
   // Tema (Bernoulli-like)
   const bernTeal = "text-[#14b8a6]";
   const bernNavy = "text-[#1f2a6a]";
@@ -438,55 +497,55 @@ function formatarAvaliacao(nome: string) {
   const td = "px-0.5 sm:px-4 py-2";
 
   const inputNum =
-  "w-11 sm:w-16 md:w-20 text-right rounded-lg border border-[#2dd4bf]/60 bg-[#e6fffb] " +
-  "px-1 py-1 placeholder:text-slate-500 shadow-sm outline-none " +
-  focusRing;
+    "w-11 sm:w-16 md:w-20 text-right rounded-lg border border-[#2dd4bf]/60 bg-[#e6fffb] " +
+    "px-1 py-1 placeholder:text-slate-500 shadow-sm outline-none " +
+    focusRing;
 
 
   const inputAvaliacao =
     "w-full rounded-lg border px-2 py-1 shadow-sm outline-none " +
     "border-white/50 bg-white/70 focus:ring-2 focus:ring-[#14b8a6] focus:border-[#14b8a6]";
 
-if (!session) {
-  return (
-    <div className="min-h-screen flex items-center justify-center p-6">
-      <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h1 className="text-lg font-extrabold text-slate-900">Entrar</h1>
+  if (!session) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-6">
+        <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <h1 className="text-lg font-extrabold text-slate-900">Entrar</h1>
 
-        {msg && (
-          <div className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-            {msg}
+          {msg && (
+            <div className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+              {msg}
+            </div>
+          )}
+
+          <div className="mt-4 space-y-3">
+            <input
+              className="w-full rounded-xl border border-slate-300 px-3 py-2"
+              placeholder="Email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+            <input
+              className="w-full rounded-xl border border-slate-300 px-3 py-2"
+              placeholder="Senha"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+
+            <button
+              className="w-full rounded-xl bg-[#14b8a6] py-2 font-bold text-white"
+              onClick={handleLogin}
+            >
+              Entrar
+            </button>
           </div>
-        )}
-
-        <div className="mt-4 space-y-3">
-          <input
-            className="w-full rounded-xl border border-slate-300 px-3 py-2"
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-          <input
-            className="w-full rounded-xl border border-slate-300 px-3 py-2"
-            placeholder="Senha"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-
-          <button
-            className="w-full rounded-xl bg-[#14b8a6] py-2 font-bold text-white"
-            onClick={handleLogin}
-          >
-            Entrar
-          </button>
         </div>
       </div>
-    </div>
-  );
-}
+    );
+  }
 
-  
+
   return (
     <div className="min-h-screen text-slate-900">
       <div className="absolute inset-0 -z-10 bg-gradient-to-r from-[#c9f7f1] via-[#bfeff2] to-[#88dfd7]" />
@@ -584,46 +643,46 @@ if (!session) {
               </div>
             </div>
 
-<div className="rounded-2xl border border-white/30 bg-white/60 p-3 shadow-sm backdrop-blur">
-  <div className="text-xs font-semibold text-slate-700">Editar avaliações</div>
+            <div className="rounded-2xl border border-white/30 bg-white/60 p-3 shadow-sm backdrop-blur">
+              <div className="text-xs font-semibold text-slate-700">Editar avaliações</div>
 
-  <button
-    type="button"
-    onClick={() => setEditAvaliacaoOn((v) => !v)}
-    className={[
-      "mt-1 inline-flex items-center gap-2 rounded-lg border px-3 py-1 text-sm font-semibold shadow-sm",
-      editAvaliacaoOn
-        ? "border-[#14b8a6]/60 bg-[#e6fffb] text-[#0f766e]"
-        : "border-slate-200 bg-white/80 text-slate-700",
-    ].join(" ")}
-    title={
-      editAvaliacaoOn
-        ? "Edição de avaliações LIBERADA"
-        : "Edição de avaliações BLOQUEADA (padrão)"
-    }
-  >
-    <span
-      className={[
-        "inline-flex h-5 w-9 items-center rounded-full p-0.5 transition",
-        editAvaliacaoOn ? "bg-[#14b8a6]" : "bg-slate-300",
-      ].join(" ")}
-    >
-      <span
-        className={[
-          "h-4 w-4 rounded-full bg-white shadow transition",
-          editAvaliacaoOn ? "translate-x-4" : "translate-x-0",
-        ].join(" ")}
-      />
-    </span>
-    {editAvaliacaoOn ? "ON" : "OFF"}
-  </button>
+              <button
+                type="button"
+                onClick={() => setEditAvaliacaoOn((v) => !v)}
+                className={[
+                  "mt-1 inline-flex items-center gap-2 rounded-lg border px-3 py-1 text-sm font-semibold shadow-sm",
+                  editAvaliacaoOn
+                    ? "border-[#14b8a6]/60 bg-[#e6fffb] text-[#0f766e]"
+                    : "border-slate-200 bg-white/80 text-slate-700",
+                ].join(" ")}
+                title={
+                  editAvaliacaoOn
+                    ? "Edição de avaliações LIBERADA"
+                    : "Edição de avaliações BLOQUEADA (padrão)"
+                }
+              >
+                <span
+                  className={[
+                    "inline-flex h-5 w-9 items-center rounded-full p-0.5 transition",
+                    editAvaliacaoOn ? "bg-[#14b8a6]" : "bg-slate-300",
+                  ].join(" ")}
+                >
+                  <span
+                    className={[
+                      "h-4 w-4 rounded-full bg-white shadow transition",
+                      editAvaliacaoOn ? "translate-x-4" : "translate-x-0",
+                    ].join(" ")}
+                  />
+                </span>
+                {editAvaliacaoOn ? "ON" : "OFF"}
+              </button>
 
-  <div className="mt-1 text-[11px] text-slate-600">
-    {editAvaliacaoOn ? "Cuidado: edição habilitada." : "Travado. Evita edição acidental."}
-  </div>
-</div>
+              <div className="mt-1 text-[11px] text-slate-600">
+                {editAvaliacaoOn ? "Cuidado: edição habilitada." : "Travado. Evita edição acidental."}
+              </div>
+            </div>
 
-            
+
             <button
               className="rounded-2xl bg-[#14b8a6] px-4 py-3 text-sm font-extrabold text-white shadow-sm hover:bg-[#10a99a] active:translate-y-[1px]"
               onClick={criarDisciplina}
@@ -633,11 +692,11 @@ if (!session) {
               + Disciplina
             </button>
             <button
-  className="rounded-2xl bg-white/80 px-4 py-3 text-sm font-extrabold text-slate-800 shadow-sm hover:bg-white"
-  onClick={handleLogout}
->
-  Sair
-</button>
+              className="rounded-2xl bg-white/80 px-4 py-3 text-sm font-extrabold text-slate-800 shadow-sm hover:bg-white"
+              onClick={handleLogout}
+            >
+              Sair
+            </button>
 
           </div>
         </header>
@@ -663,31 +722,32 @@ if (!session) {
 
           {porDisciplina.map(([disciplina, list]) => {
             const r = disciplinaResumo(list);
+            const resumoAnual = resumoAnualDisciplina(disciplina);
             const obs = (list.find((x) => (x.obs ?? "").trim() !== "")?.obs ?? "").trim();
 
             return (
               <div key={disciplina} className="rounded-3xl border border-white/30 bg-white/60 shadow-sm backdrop-blur">
                 <div className="flex items-center justify-between gap-2 border-b border-white/30 p-4">
                   <div>
-  <h2 className={`text-lg font-extrabold ${bernNavy}`}>{disciplina}</h2>
+                    <h2 className={`text-lg font-extrabold ${bernNavy}`}>{disciplina}</h2>
 
-  {(() => {
-    const obs = (list.find((x) => (x.obs ?? "").trim() !== "")?.obs ?? "").trim();
-    if (!obs) return null;
-    return (
-      <div className="mt-1 whitespace-pre-line text-xs font-semibold text-slate-700">
-        {obs}
-      </div>
-    );
-  })()}
+                    {(() => {
+                      const obs = (list.find((x) => (x.obs ?? "").trim() !== "")?.obs ?? "").trim();
+                      if (!obs) return null;
+                      return (
+                        <div className="mt-1 whitespace-pre-line text-xs font-semibold text-slate-700">
+                          {obs}
+                        </div>
+                      );
+                    })()}
 
-  {/* ✅ SOMA MÁX (só enquanto não fechou) */}
-  {r.diff > 0 && (
-    <div className="mt-1 text-xs text-slate-700">
-      Soma Máx: <b className="text-amber-700">{fmt1(r.somaMax)}</b> / {totalEtapa}{" "}
-      <span className="text-slate-500">(complete os valores)</span>
-    </div>
-  )}
+                    {/* ✅ SOMA MÁX (só enquanto não fechou) */}
+                    {r.diff > 0 && (
+                      <div className="mt-1 text-xs text-slate-700">
+                        Soma Máx: <b className="text-amber-700">{fmt1(r.somaMax)}</b> / {totalEtapa}{" "}
+                        <span className="text-slate-500">(complete os valores)</span>
+                      </div>
+                    )}
 
 
 
@@ -727,39 +787,74 @@ if (!session) {
                         </div>
                       );
                     })()}
+                    {etapa === 3 && (
+                      <div className="mt-3 rounded-xl border border-blue-200 bg-blue-50 p-3 text-xs text-slate-700">
+                        <div>
+                          Total acumulado no ano:
+                          <b className="ml-1 text-[#1f2a6a]">
+                            {fmt1(resumoAnual.notaAcumulada)}
+                          </b>
+                        </div>
+
+                        {resumoAnual.aprovado ? (
+                          <div className="mt-1 font-bold text-green-700">
+                            ✅ Já passou. Atingiu os 60 pontos.
+                          </div>
+                        ) : (
+                          <>
+                            <div className="mt-1">
+                              Faltam{" "}
+                              <b className="text-[#1f2a6a]">
+                                {fmt1(resumoAnual.faltaParaPassar)}
+                              </b>{" "}
+                              pontos para aprovação.
+                            </div>
+
+                            <div className="mt-1">
+                              Ainda há{" "}
+                              <b className="text-[#1f2a6a]">
+                                {fmt1(resumoAnual.pontosEmDisputa)}
+                              </b>{" "}
+                              pontos em disputa.
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    )}
+
                   </div>
 
                   <div className="flex flex-wrap gap-2">
                     <button
-  className={[
-    "rounded-2xl px-3 py-2 text-sm font-semibold shadow-sm",
-    editAvaliacaoOn
-      ? "bg-white/80 text-slate-800 hover:bg-white"
-      : "bg-slate-100 text-slate-400 cursor-not-allowed",
-  ].join(" ")}
-  title={
-    editAvaliacaoOn
-      ? "Adicionar nova avaliação"
-      : "Edição de avaliações bloqueada (ative no cabeçalho)"
-  }
-  onClick={() => {
-    if (!editAvaliacaoOn) return;
-    addLinha(disciplina);
-  }}
->
-  + Avaliação
-</button>
+                      className={[
+                        "rounded-2xl px-3 py-2 text-sm font-semibold shadow-sm",
+                        editAvaliacaoOn
+                          ? "bg-white/80 text-slate-800 hover:bg-white"
+                          : "bg-slate-100 text-slate-400 cursor-not-allowed",
+                      ].join(" ")}
+                      title={
+                        editAvaliacaoOn
+                          ? "Adicionar nova avaliação"
+                          : "Edição de avaliações bloqueada (ative no cabeçalho)"
+                      }
+                      onClick={() => {
+                        if (!editAvaliacaoOn) return;
+                        addLinha(disciplina);
+                      }}
+                    >
+                      + Avaliação
+                    </button>
 
 
                     {r.diff > 0 && (
-  <button
-    className="rounded-2xl bg-[#e6fffb] px-3 py-2 text-sm font-bold text-[#0f766e] shadow-sm hover:bg-[#ccfbf1]"
-    onClick={() => fecharTotal(disciplina, list)}
-    title="Cria/atualiza uma linha 'Ajuste' para fechar o total"
-  >
-    Fechar total
-  </button>
-)}
+                      <button
+                        className="rounded-2xl bg-[#e6fffb] px-3 py-2 text-sm font-bold text-[#0f766e] shadow-sm hover:bg-[#ccfbf1]"
+                        onClick={() => fecharTotal(disciplina, list)}
+                        title="Cria/atualiza uma linha 'Ajuste' para fechar o total"
+                      >
+                        Fechar total
+                      </button>
+                    )}
 
                   </div>
                 </div>
@@ -790,8 +885,8 @@ if (!session) {
                           buf.nota !== undefined
                             ? parsePtNumber(buf.nota)
                             : row.nota === null || row.nota === undefined
-                            ? null
-                            : toNum(row.nota);
+                              ? null
+                              : toNum(row.nota);
 
                         const mediaLinha = round1(valorMaxEff * 0.6);
 
@@ -803,8 +898,8 @@ if (!session) {
                             b.nota !== undefined
                               ? parsePtNumber(b.nota)
                               : r.nota === null || r.nota === undefined
-                              ? null
-                              : toNum(r.nota);
+                                ? null
+                                : toNum(r.nota);
                           return n !== null;
                         });
 
@@ -823,8 +918,8 @@ if (!session) {
                               b.nota !== undefined
                                 ? parsePtNumber(b.nota)
                                 : r.nota === null || r.nota === undefined
-                                ? null
-                                : toNum(r.nota);
+                                  ? null
+                                  : toNum(r.nota);
                             return acc + (n ?? 0);
                           }, 0)
                         );
@@ -837,46 +932,46 @@ if (!session) {
 
                         return (
                           <tr key={row.id} className="border-t border-white/30 bg-white/40">
-<td className={td}>
-  <input
-    title={
-      !editAvaliacaoOn
-        ? "Edição de avaliações bloqueada (ative no cabeçalho)"
-        : (edit[row.id]?.avaliacao ?? row.avaliacao ?? "")
-    }
-    className={[
-      inputAvaliacao,
-      isAjuste ? "border-[#14b8a6]/50 bg-[#ccfbf1]" : "",
-      !editAvaliacaoOn ? "opacity-70 cursor-not-allowed" : "",
-    ].join(" ")}
-    value={
-      // enquanto edita: usa o buffer local (não formata e não salva a cada tecla)
-      editAvaliacaoOn
-        ? (edit[row.id]?.avaliacao ?? (row.avaliacao ?? ""))
-        : // quando NÃO edita: pode exibir formatado (P/ 🏠 etc.)
-          formatarAvaliacao(row.avaliacao || "")
-    }
-    readOnly={!editAvaliacaoOn}
-    onChange={(e) => {
-      if (!editAvaliacaoOn) return;
-      const v = e.target.value;
-      setEdit((prev) => ({ ...prev, [row.id]: { ...prev[row.id], avaliacao: v } }));
-    }}
-    onBlur={async () => {
-      if (!editAvaliacaoOn) return;
-      if (edit[row.id]?.avaliacao === undefined) return;
+                            <td className={td}>
+                              <input
+                                title={
+                                  !editAvaliacaoOn
+                                    ? "Edição de avaliações bloqueada (ative no cabeçalho)"
+                                    : (edit[row.id]?.avaliacao ?? row.avaliacao ?? "")
+                                }
+                                className={[
+                                  inputAvaliacao,
+                                  isAjuste ? "border-[#14b8a6]/50 bg-[#ccfbf1]" : "",
+                                  !editAvaliacaoOn ? "opacity-70 cursor-not-allowed" : "",
+                                ].join(" ")}
+                                value={
+                                  // enquanto edita: usa o buffer local (não formata e não salva a cada tecla)
+                                  editAvaliacaoOn
+                                    ? (edit[row.id]?.avaliacao ?? (row.avaliacao ?? ""))
+                                    : // quando NÃO edita: pode exibir formatado (P/ 🏠 etc.)
+                                    formatarAvaliacao(row.avaliacao || "")
+                                }
+                                readOnly={!editAvaliacaoOn}
+                                onChange={(e) => {
+                                  if (!editAvaliacaoOn) return;
+                                  const v = e.target.value;
+                                  setEdit((prev) => ({ ...prev, [row.id]: { ...prev[row.id], avaliacao: v } }));
+                                }}
+                                onBlur={async () => {
+                                  if (!editAvaliacaoOn) return;
+                                  if (edit[row.id]?.avaliacao === undefined) return;
 
-      const raw = (edit[row.id]?.avaliacao ?? "").trim();
-      await patchLinha(row.id, { avaliacao: raw });
+                                  const raw = (edit[row.id]?.avaliacao ?? "").trim();
+                                  await patchLinha(row.id, { avaliacao: raw });
 
-      setEdit((prev) => {
-        const next = { ...prev };
-        if (next[row.id]) delete next[row.id].avaliacao;
-        return next;
-      });
-    }}
-  />
-</td>
+                                  setEdit((prev) => {
+                                    const next = { ...prev };
+                                    if (next[row.id]) delete next[row.id].avaliacao;
+                                    return next;
+                                  });
+                                }}
+                              />
+                            </td>
 
 
 
@@ -929,8 +1024,8 @@ if (!session) {
                                   buf.nota !== undefined
                                     ? buf.nota
                                     : row.nota === null || row.nota === undefined
-                                    ? ""
-                                    : fmt1(toNum(row.nota))
+                                      ? ""
+                                      : fmt1(toNum(row.nota))
                                 }
                                 onChange={(e) => {
                                   const v = e.target.value;
@@ -997,16 +1092,16 @@ if (!session) {
                 </div>
 
                 {!r.ok && r.excedeu === 0 && (
-  <div className="border-t border-white/30 bg-amber-50/70 p-3 text-xs font-semibold text-amber-900">
-    Esta disciplina não fecha o total da etapa. Clique em <b>Fechar total</b> para criar/ajustar a linha “Ajuste”.
-  </div>
-)}
+                  <div className="border-t border-white/30 bg-amber-50/70 p-3 text-xs font-semibold text-amber-900">
+                    Esta disciplina não fecha o total da etapa. Clique em <b>Fechar total</b> para criar/ajustar a linha “Ajuste”.
+                  </div>
+                )}
 
-{!r.ok && r.excedeu > 0 && (
-  <div className="border-t border-white/30 bg-white/60 p-3 text-xs font-semibold text-slate-800">
-    Esta etapa possui <b>{fmt1(r.excedeu)}</b> ponto(s) extras.
-  </div>
-)}
+                {!r.ok && r.excedeu > 0 && (
+                  <div className="border-t border-white/30 bg-white/60 p-3 text-xs font-semibold text-slate-800">
+                    Esta etapa possui <b>{fmt1(r.excedeu)}</b> ponto(s) extras.
+                  </div>
+                )}
 
               </div>
             );
