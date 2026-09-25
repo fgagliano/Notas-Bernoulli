@@ -372,21 +372,41 @@ export default function Home() {
     });
 
     if (error) return setMsg(error.message);
-    await carregarNotas();
+
+    await Promise.all([
+      carregarNotas(),
+      carregarNotasDoAno(),
+    ]);
   }
 
   async function delLinha(id: number) {
     setMsg("");
     const { error } = await supabase.from("notas").delete().eq("id", id);
     if (error) return setMsg(error.message);
-    await carregarNotas();
+
+    await Promise.all([
+      carregarNotas(),
+      carregarNotasDoAno(),
+    ]);
   }
 
   async function patchLinha(id: number, patch: Partial<NotaRow>) {
     setMsg("");
     const { error } = await supabase.from("notas").update(patch).eq("id", id);
+
     if (error) return setMsg(error.message);
-    setRows((prev) => prev.map((r) => (r.id === id ? ({ ...r, ...patch } as NotaRow) : r)));
+
+    setRows((prev) =>
+      prev.map((r) =>
+        r.id === id ? ({ ...r, ...patch } as NotaRow) : r
+      )
+    );
+
+    setRowsAno((prev) =>
+      prev.map((r) =>
+        r.id === id ? ({ ...r, ...patch } as NotaRow) : r
+      )
+    );
   }
 
   async function criarDisciplina() {
@@ -426,7 +446,11 @@ export default function Home() {
       if (error) return setMsg(error.message);
     }
 
-    await carregarNotas();
+    await Promise.all([
+      carregarNotas(),
+      carregarNotasDoAno(),
+    ]);
+
   }
 
   function disciplinaResumo(list: NotaRow[]) {
